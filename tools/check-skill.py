@@ -53,15 +53,25 @@ def front_matter_problems(text):
     problems = []
     if name.group(1) != "rowkeep":
         problems.append("SKILL.md names the skill %r, not rowkeep" % name.group(1))
-    length = len(described.group(1).strip())
+    value = described.group(1).strip()
+    if not (len(value) >= 2 and value[0] == '"' and value[-1] == '"') and (": " in value or " #" in value or value[:1] in "'\"[]{}>|*&!%@`"):
+        problems.append("SKILL.md's description holds \": \" or \" #\" or starts with a mark YAML reads, so it must be in double quotes: a strict YAML reader refuses it as it is")
+    length = len(unquoted(value))
     if length > DESCRIPTION_LIMIT:
         problems.append("SKILL.md's description is %d characters; claude.ai accepts at most %d" % (length, DESCRIPTION_LIMIT))
     return problems
 
 
+def unquoted(value):
+    """A description as a reader of YAML takes it: without the double quotes round it."""
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        return value[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    return value
+
+
 def description_length(text):
     described = re.search(r"^description:[ \t]*(.*)$", text, re.M)
-    return len(described.group(1).strip()) if described else 0
+    return len(unquoted(described.group(1).strip())) if described else 0
 
 
 def read_archive(data):

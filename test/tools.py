@@ -155,6 +155,17 @@ class CheckSkill(Temp):
         self.write("skill/SKILL.md", text.replace(described, "description: " + "x" * 1024))
         self.assertEqual(run("check-skill.py", "--skill", self.path("skill"))[0], 0)
 
+    def test_a_description_a_strict_yaml_reader_refuses_fails(self):
+        text = dict(self.files)["SKILL.md"].decode("utf-8")
+        described = [line for line in text.split("\n") if line.startswith("description:")][0]
+        self.assertTrue(described.rstrip().endswith('"'), "the shipped description is quoted")
+        self.write("skill/SKILL.md", text.replace(described, "description: Keeps a log: rows and records"))
+        code, said = run("check-skill.py", "--skill", self.path("skill"))
+        self.assertEqual(code, 1, said)
+        self.assertIn("must be in double quotes", said)
+        self.write("skill/SKILL.md", text.replace(described, 'description: "Keeps a log: rows and records"'))
+        self.assertEqual(run("check-skill.py", "--skill", self.path("skill"))[0], 0)
+
     def test_a_file_that_is_not_an_archive_is_an_error_not_a_pass(self):
         code, said = self.check(self.write("out/not.skill", b"not a zip at all"))
         self.assertEqual(code, 2, said)

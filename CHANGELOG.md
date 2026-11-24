@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.2
+
+- The skill's description is in double quotes. It holds colons, and a strict YAML reader
+  refused the unquoted line ("mapping values are not allowed here"); claude.ai's upload
+  and Claude Code's plugin check both took it as it was. Nothing else in the skill
+  changed. `tools/check-skill.py` now fails a description that needs quotes and has none.
+
 ## 0.7.1
 
 Fixes for what a second independent check of 0.7.0 found, in the script and then in the

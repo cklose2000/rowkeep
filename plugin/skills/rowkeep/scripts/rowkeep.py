@@ -39,7 +39,7 @@ from bisect import bisect_right
 from collections import namedtuple
 from decimal import Decimal
 
-VERSION = "0.7.1"
+VERSION = "0.7.2"
 
 USAGE = """\
 rowkeep: an append-only activity stream kept in an artifact's database.
