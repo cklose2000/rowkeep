@@ -39,7 +39,7 @@ from bisect import bisect_right
 from collections import namedtuple
 from decimal import Decimal
 
-VERSION = "0.7.2"
+VERSION = "0.7.3"
 
 USAGE = """\
 rowkeep: an append-only activity stream kept in an artifact's database.
@@ -1055,7 +1055,7 @@ def now_secs():
 def iso_utc(secs):
     """`2026-11-22T19:05:01+00:00`, as Python's `isoformat(timespec="seconds")` gives for
     UTC. The day arithmetic here and in `days_from_civil` follows Howard Hinnant's published
-    algorithms for civil dates (https://howardhinnant.github.io/date_algorithms.html).
+    algorithms for civil dates ("chrono-Compatible Low-Level Date Algorithms").
     datetime is not used because it stops at the year 9999 and the Rust program did not."""
     days, rem = secs // 86400, secs % 86400
     z = days + 719468
@@ -4306,7 +4306,7 @@ def cli_check(flags):
     # Rows can be deleted from the front as easily as changed, so a stream that does not
     # start at 1 is a problem unless the caller says it gave only part.
     if not partial and rows and first != 1:
-        problems.append(f"the rows given start at {first}, not 1: earlier rows are missing (pass --partial if you gave only the newest part on purpose)")
+        problems.append(f"the rows given start at {first}, not 1: earlier rows are missing (add --partial if you gave only the newest part on purpose)")
     # A check that was given nothing has verified nothing, and must not say otherwise.
     if not rows:
         problems.append("no rows were given, so nothing was verified")

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.3
+
+- Two wordings in the script changed, and nothing it does. A scan by Anthropic's plugin
+  directory read a web address in a comment (the source of the date arithmetic) as a
+  place the script could send data, and the words "pass --partial" in a message as a use
+  of the `pass` password store. The script imports nothing that can open a connection or
+  start another program. The comment now names the source by its title, and the message
+  says "add --partial".
+
 ## 0.7.2
 
 - The skill's description is in double quotes. It holds colons, and a strict YAML reader
