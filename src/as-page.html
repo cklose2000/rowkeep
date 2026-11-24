@@ -1,0 +1,214 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Rowkeep</title>
+<style>
+/* Layout: four gauges across the top, then tallies (the answers), then the rows (the evidence). */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --well: #e3e8f0;
+  --ink: #131c2b;
+  --muted: #566377;
+  --line: #d3dae5;
+  --accent: #2847c9;
+  --accent-ink: #ffffff;
+  --hot: #b45f06;
+  --good: #1a7a52;
+  --crit: #b3261e;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131b; --surface: #161d28; --well: #222c3a; --ink: #e7ecf4; --muted: #95a2b6;
+    --line: #2a3545; --accent: #8ea6ff; --accent-ink: #0e131b; --hot: #f0a442; --good: #54c792; --crit: #ff8078;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131b; --surface: #161d28; --well: #222c3a; --ink: #e7ecf4; --muted: #95a2b6;
+  --line: #2a3545; --accent: #8ea6ff; --accent-ink: #0e131b; --hot: #f0a442; --good: #54c792; --crit: #ff8078;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.wrap {
+  max-width: 1180px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 20px;
+}
+h1, h2, p { margin: 0; }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 16px; font-weight: 600; }
+.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.top > div { min-width: 0; flex: 1 1 320px; display: flex; flex-direction: column; gap: 4px; }
+.lede { color: var(--muted); max-width: 64ch; }
+.status { font-size: 13px; color: var(--muted); max-width: 44ch; text-align: right; overflow-wrap: anywhere; }
+.status[data-kind="good"] { color: var(--good); }
+.status[data-kind="bad"] { color: var(--crit); }
+@media (max-width: 640px) { .status { text-align: left; } }
+
+.gauges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 860px) { .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .gauges { grid-template-columns: minmax(0, 1fr); } }
+.gauge { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.g-label { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.g-value { font-family: var(--mono); font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.15; overflow-wrap: anywhere; }
+.g-value[data-kind="good"] { color: var(--good); }
+.g-value[data-kind="bad"] { color: var(--crit); }
+.g-sub { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; justify-content: space-between; }
+.note { font-size: 13px; color: var(--muted); max-width: 80ch; overflow-wrap: anywhere; }
+.note.warn { color: var(--crit); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; min-width: 0; }
+.field.narrow { flex: 0 1 160px; }
+.field label { font-size: 12px; color: var(--muted); }
+input, select, button { font: inherit; color: inherit; }
+input, select { width: 100%; min-width: 0; padding: 7px 9px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
+input::placeholder { color: var(--muted); opacity: 0.8; }
+button { padding: 7px 14px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; white-space: nowrap; }
+button:disabled { opacity: 0.5; cursor: default; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.scroll { overflow-x: auto; min-width: 0; }
+.scroll.tall { max-height: 560px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12px; position: sticky; top: 0; background: var(--surface); }
+td.num, th.num { text-align: right; padding-right: 16px; }
+td.mono, td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.clip { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+td.wrap { white-space: normal; min-width: 240px; max-width: 460px; overflow-wrap: anywhere; }
+tbody tr:last-child td { border-bottom: 0; }
+.tier { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; }
+.tier.pending { color: var(--hot); }
+.tier.packed { color: var(--accent); }
+.tier.bad { color: var(--crit); }
+/* Text that people logged can be one long unbroken run: a cell either clips it (td.clip)
+   or breaks it anywhere (td.wrap, a draft and its subject), so it never widens the layout. */
+summary { cursor: pointer; color: var(--accent); white-space: normal; overflow-wrap: anywhere; }
+.draft { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; margin-top: 6px; }
+.empty { color: var(--muted); padding: 12px 0 6px; max-width: 60ch; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Rowkeep</h1>
+      <p class="lede">An activity stream kept in this page's own database. Your assistant records what was done as it works; this page only reads.</p>
+    </div>
+    <p id="status" class="status" role="status" aria-live="polite">Opening the log…</p>
+  </header>
+
+  <p id="bad-note" class="note warn" role="status" hidden></p>
+
+  <section class="gauges" aria-label="State of the stream">
+    <div class="gauge">
+      <span class="g-label">Rows</span>
+      <span class="g-value" id="g-rows">—</span>
+      <span class="g-sub" id="g-rows-sub">sealed and waiting</span>
+    </div>
+    <div class="gauge">
+      <span class="g-label">Fingerprint chain</span>
+      <span class="g-value" id="g-chain">—</span>
+      <span class="g-sub" id="g-chain-sub">checked in your browser</span>
+    </div>
+    <div class="gauge">
+      <span class="g-label">Pending</span>
+      <span class="g-value" id="g-pending">—</span>
+      <span class="g-sub" id="g-pending-sub">things awaiting follow-up</span>
+    </div>
+    <div class="gauge">
+      <span class="g-label">Last activity</span>
+      <span class="g-value" id="g-last">—</span>
+      <span class="g-sub" id="g-last-sub">no activity yet</span>
+    </div>
+  </section>
+
+  <section class="panel" id="due-panel" aria-labelledby="h-due" hidden>
+    <div class="panel-head">
+      <h2 id="h-due">Due</h2>
+      <p id="due-note" class="note"></p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>When</th><th>For</th><th>Next step</th><th>Owner</th><th>Prepared</th></tr></thead>
+        <tbody id="due-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-tally">
+    <div class="panel-head">
+      <h2 id="h-tally">Tallies</h2>
+      <p id="tally-note" class="note"></p>
+    </div>
+    <div class="scroll">
+      <table id="tally-table" hidden>
+        <thead><tr><th>Verb</th><th class="num">Rows</th><th>By actor</th><th>By source</th><th>Counted and summed fields</th><th>Last</th></tr></thead>
+        <tbody id="tally-body"></tbody>
+      </table>
+    </div>
+    <p id="tally-empty" class="empty" hidden>No tallies yet. They appear once rows are sealed.</p>
+  </section>
+
+  <section class="panel" id="pend-panel" aria-labelledby="h-pend" hidden>
+    <div class="panel-head">
+      <h2 id="h-pend">Awaiting follow-up</h2>
+      <p id="pend-note" class="note">Things whose most recent row left them pending.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>What</th><th>Entity</th><th>Last verb</th><th>Since</th><th class="num">Rows</th></tr></thead>
+        <tbody id="pend-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="rec-panel" aria-labelledby="h-rec" hidden>
+    <div class="panel-head">
+      <h2 id="h-rec">Records</h2>
+      <p id="rec-note" class="note"></p>
+    </div>
+    <div class="row">
+      <div class="field"><label for="q-type">Type</label><select id="q-type"><option value="">Every type</option></select></div>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Current details</th><th>Last activity</th><th class="num">Rows</th></tr></thead>
+        <tbody id="rec-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-rows">
+    <div class="panel-head">
+      <h2 id="h-rows">Rows</h2>
+      <p id="row-summary" class="note"></p>
+    </div>
+    <div class="row">
+      <div class="field"><label for="q-verb">Verb</label><select id="q-verb"><option value="">Any verb</option></select></div>
+      <div class="field"><label for="q-actor">Actor</label><select id="q-actor"><option value="">Any actor</option></select></div>
+      <div class="field"><label for="q-text">Entity or subject contains</label><input id="q-text" placeholder="anything"></div>
+      <div class="field narrow"><label for="q-show">Show</label>
+        <select id="q-show"><option value="all">Sealed and waiting</option><option value="sealed">Sealed only</option><option value="waiting">Waiting only</option></select>
+      </div>
+      <button id="btn-reload" type="button">Reload</button>
+    </div>
+    <div class="scroll tall">
+      <table id="row-table" hidden>
+        <thead><tr><th class="num">#</th><th>Time</th><th>Verb</th><th>What</th><th>Actor</th><th>Details</th><th>Status</th></tr></thead>
+        <tbody id="row-body"></tbody>
+      </table>
+    </div>
+    <p id="row-empty" class="empty">Reading the log…</p>
+  </section>
+
+  <p class="note">Rowkeep is an independent open-source project. It is not made or endorsed by Anthropic.</p>
+</div>
+
+<script>/*__STORE__*/</script>
+<script>/*__UI__*/</script>

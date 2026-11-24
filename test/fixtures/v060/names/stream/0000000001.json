@@ -1,0 +1,1 @@
+{"account":"u_abcdefghijklmnopqrstuv","actor":"human","entity":"client:eclair","fingerprint":"1a1aea5070f81200df73bb3b6df8bd440f9e8148bd393d6baeca27531823a9a8","id":1,"idempotency_key":null,"payload":{"owner":"Dana"},"previous":"","source":"chat","status":"ok","subject":"Éclair Bakery","ts":"2026-11-22T19:00:00+00:00","verb":"account_updated"}

@@ -1,0 +1,11 @@
+# Shell scripts and everything the skill ships must keep LF endings: a skill packaged on
+# Windows with CRLF in rowkeep.sh does not run on Linux.
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.skill binary
+*.png binary
+*.gif binary

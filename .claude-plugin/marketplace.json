@@ -1,0 +1,12 @@
+{
+  "name": "rowkeep",
+  "description": "Rowkeep: a small database that lives in an artifact in your own Claude account.",
+  "owner": { "name": "Rowkeep authors" },
+  "plugins": [
+    {
+      "name": "rowkeep",
+      "source": "./plugin",
+      "description": "A small database that lives in an artifact in your own Claude account: an activity log, records, follow-ups, and a ledger that can be checked. No outside service."
+    }
+  ]
+}

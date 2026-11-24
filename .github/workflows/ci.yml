@@ -1,0 +1,105 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# Every run step is a bash script that stops at the first command that fails, a command
+# on the left of a pipe included: a step never ends well because its last command did.
+defaults:
+  run:
+    shell: bash --noprofile --norc -eo pipefail {0}
+
+# Every action is pinned to a commit, with the release it is in a comment, and both images
+# to a digest: a tag can be moved to other code, a commit and a digest cannot. The runner
+# is a named image version and Node an exact release, so that a run does not change under
+# the same commit when "latest" moves.
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.23.1
+      - name: Unit tests
+        run: python3 test/unit.py
+      - name: The build's own checks, tested
+        run: python3 test/tools.py
+      - name: Build the pages and the skill, twice, and check the archive
+        run: sh tools/build-skill.sh
+      - name: The committed pages are the ones src/ builds
+        run: git diff --exit-code -- plugin/
+      - name: The stream, end to end
+        run: node test/stream.mjs
+      - name: The page, without a browser
+        run: node test/page.mjs
+      - name: The week-long sequence, against the model
+        run: node tools/drill.mjs mock
+      - name: The plugin folder holds text of known kinds, one icon, a manifest that is one, no links, and no file over 256 KiB
+        run: python3 tools/check-plugin.py
+      # `claude plugin validate . --strict` and `claude plugin validate plugin --strict` are
+      # run by hand before a release, not here: nothing shows that the tool installs and
+      # runs in CI without an account's credentials, and a step that needs a secret has no
+      # place in a workflow that reads pull requests.
+      - name: Nothing private in the tracked files or in the built skill
+        run: sh tools/public-tree.sh "$RUNNER_TEMP/rowkeep-public-copy" --archive dist/rowkeep.skill
+      # Written with a redirect and then verified: a checksum that could not be computed
+      # stops the step, where a pipe into `tee` would have ended well with an empty file.
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum rowkeep.skill > rowkeep.skill.sha256
+          sha256sum --check --strict rowkeep.skill.sha256
+          cat rowkeep.skill.sha256
+      # The built skill is kept only for pushes to main, never for a pull request, and
+      # under a name that says it is a CI build of one commit and not a release.
+      - name: Short commit id
+        id: commit
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          short=$(git rev-parse --short=7 HEAD)
+          test -n "$short"
+          echo "short=$short" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: rowkeep-skill-ci-${{ steps.commit.outputs.short }}
+          if-no-files-found: error
+          path: |
+            dist/rowkeep.skill
+            dist/rowkeep.skill.sha256
+
+  # The script says it needs Python 3.8 or later, so it is run on 3.8 and on the newest.
+  pythons:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.8"
+            image: python@sha256:1d52838af602b4b5a831beb13a0e4d073280665ea7be7f69ce2382f29c5a613f # python:3.8-slim
+          - python: "3.14"
+            image: python@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f # python:3.14-slim
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.23.1
+      - run: python3 --version
+      - name: Unit tests
+        run: python3 test/unit.py
+      - name: The stream, end to end
+        run: node test/stream.mjs
+      - name: The week-long sequence, against the model
+        run: node tools/drill.mjs mock
+      - name: The launcher finds this Python
+        run: sh plugin/skills/rowkeep/scripts/rowkeep.sh version

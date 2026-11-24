@@ -1,0 +1,19 @@
+# build outputs: the public skill, and under dist/personal/ the owner's own copy
+dist/
+*.skill
+*.skill.failed
+
+# A checkout owner's own log (see tools/build-personal.sh). Never committed.
+local.json
+
+# tooling
+node_modules/
+__pycache__/
+*.pyc
+.env
+.env.*
+
+# editor backups
+*~
+*.bak
+*.swp

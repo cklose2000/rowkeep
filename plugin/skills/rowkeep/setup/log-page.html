@@ -1,0 +1,1093 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Rowkeep</title>
+<style>
+/* Layout: four gauges across the top, then tallies (the answers), then the rows (the evidence). */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --well: #e3e8f0;
+  --ink: #131c2b;
+  --muted: #566377;
+  --line: #d3dae5;
+  --accent: #2847c9;
+  --accent-ink: #ffffff;
+  --hot: #b45f06;
+  --good: #1a7a52;
+  --crit: #b3261e;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131b; --surface: #161d28; --well: #222c3a; --ink: #e7ecf4; --muted: #95a2b6;
+    --line: #2a3545; --accent: #8ea6ff; --accent-ink: #0e131b; --hot: #f0a442; --good: #54c792; --crit: #ff8078;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131b; --surface: #161d28; --well: #222c3a; --ink: #e7ecf4; --muted: #95a2b6;
+  --line: #2a3545; --accent: #8ea6ff; --accent-ink: #0e131b; --hot: #f0a442; --good: #54c792; --crit: #ff8078;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.wrap {
+  max-width: 1180px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 20px;
+}
+h1, h2, p { margin: 0; }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 16px; font-weight: 600; }
+.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.top > div { min-width: 0; flex: 1 1 320px; display: flex; flex-direction: column; gap: 4px; }
+.lede { color: var(--muted); max-width: 64ch; }
+.status { font-size: 13px; color: var(--muted); max-width: 44ch; text-align: right; overflow-wrap: anywhere; }
+.status[data-kind="good"] { color: var(--good); }
+.status[data-kind="bad"] { color: var(--crit); }
+@media (max-width: 640px) { .status { text-align: left; } }
+
+.gauges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 860px) { .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .gauges { grid-template-columns: minmax(0, 1fr); } }
+.gauge { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.g-label { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.g-value { font-family: var(--mono); font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.15; overflow-wrap: anywhere; }
+.g-value[data-kind="good"] { color: var(--good); }
+.g-value[data-kind="bad"] { color: var(--crit); }
+.g-sub { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; justify-content: space-between; }
+.note { font-size: 13px; color: var(--muted); max-width: 80ch; overflow-wrap: anywhere; }
+.note.warn { color: var(--crit); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; min-width: 0; }
+.field.narrow { flex: 0 1 160px; }
+.field label { font-size: 12px; color: var(--muted); }
+input, select, button { font: inherit; color: inherit; }
+input, select { width: 100%; min-width: 0; padding: 7px 9px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
+input::placeholder { color: var(--muted); opacity: 0.8; }
+button { padding: 7px 14px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; white-space: nowrap; }
+button:disabled { opacity: 0.5; cursor: default; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.scroll { overflow-x: auto; min-width: 0; }
+.scroll.tall { max-height: 560px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12px; position: sticky; top: 0; background: var(--surface); }
+td.num, th.num { text-align: right; padding-right: 16px; }
+td.mono, td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.clip { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+td.wrap { white-space: normal; min-width: 240px; max-width: 460px; overflow-wrap: anywhere; }
+tbody tr:last-child td { border-bottom: 0; }
+.tier { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; }
+.tier.pending { color: var(--hot); }
+.tier.packed { color: var(--accent); }
+.tier.bad { color: var(--crit); }
+/* Text that people logged can be one long unbroken run: a cell either clips it (td.clip)
+   or breaks it anywhere (td.wrap, a draft and its subject), so it never widens the layout. */
+summary { cursor: pointer; color: var(--accent); white-space: normal; overflow-wrap: anywhere; }
+.draft { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; margin-top: 6px; }
+.empty { color: var(--muted); padding: 12px 0 6px; max-width: 60ch; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Rowkeep</h1>
+      <p class="lede">An activity stream kept in this page's own database. Your assistant records what was done as it works; this page only reads.</p>
+    </div>
+    <p id="status" class="status" role="status" aria-live="polite">Opening the log…</p>
+  </header>
+
+  <p id="bad-note" class="note warn" role="status" hidden></p>
+
+  <section class="gauges" aria-label="State of the stream">
+    <div class="gauge">
+      <span class="g-label">Rows</span>
+      <span class="g-value" id="g-rows">—</span>
+      <span class="g-sub" id="g-rows-sub">sealed and waiting</span>
+    </div>
+    <div class="gauge">
+      <span class="g-label">Fingerprint chain</span>
+      <span class="g-value" id="g-chain">—</span>
+      <span class="g-sub" id="g-chain-sub">checked in your browser</span>
+    </div>
+    <div class="gauge">
+      <span class="g-label">Pending</span>
+      <span class="g-value" id="g-pending">—</span>
+      <span class="g-sub" id="g-pending-sub">things awaiting follow-up</span>
+    </div>
+    <div class="gauge">
+      <span class="g-label">Last activity</span>
+      <span class="g-value" id="g-last">—</span>
+      <span class="g-sub" id="g-last-sub">no activity yet</span>
+    </div>
+  </section>
+
+  <section class="panel" id="due-panel" aria-labelledby="h-due" hidden>
+    <div class="panel-head">
+      <h2 id="h-due">Due</h2>
+      <p id="due-note" class="note"></p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>When</th><th>For</th><th>Next step</th><th>Owner</th><th>Prepared</th></tr></thead>
+        <tbody id="due-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-tally">
+    <div class="panel-head">
+      <h2 id="h-tally">Tallies</h2>
+      <p id="tally-note" class="note"></p>
+    </div>
+    <div class="scroll">
+      <table id="tally-table" hidden>
+        <thead><tr><th>Verb</th><th class="num">Rows</th><th>By actor</th><th>By source</th><th>Counted and summed fields</th><th>Last</th></tr></thead>
+        <tbody id="tally-body"></tbody>
+      </table>
+    </div>
+    <p id="tally-empty" class="empty" hidden>No tallies yet. They appear once rows are sealed.</p>
+  </section>
+
+  <section class="panel" id="pend-panel" aria-labelledby="h-pend" hidden>
+    <div class="panel-head">
+      <h2 id="h-pend">Awaiting follow-up</h2>
+      <p id="pend-note" class="note">Things whose most recent row left them pending.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>What</th><th>Entity</th><th>Last verb</th><th>Since</th><th class="num">Rows</th></tr></thead>
+        <tbody id="pend-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="rec-panel" aria-labelledby="h-rec" hidden>
+    <div class="panel-head">
+      <h2 id="h-rec">Records</h2>
+      <p id="rec-note" class="note"></p>
+    </div>
+    <div class="row">
+      <div class="field"><label for="q-type">Type</label><select id="q-type"><option value="">Every type</option></select></div>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Current details</th><th>Last activity</th><th class="num">Rows</th></tr></thead>
+        <tbody id="rec-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-rows">
+    <div class="panel-head">
+      <h2 id="h-rows">Rows</h2>
+      <p id="row-summary" class="note"></p>
+    </div>
+    <div class="row">
+      <div class="field"><label for="q-verb">Verb</label><select id="q-verb"><option value="">Any verb</option></select></div>
+      <div class="field"><label for="q-actor">Actor</label><select id="q-actor"><option value="">Any actor</option></select></div>
+      <div class="field"><label for="q-text">Entity or subject contains</label><input id="q-text" placeholder="anything"></div>
+      <div class="field narrow"><label for="q-show">Show</label>
+        <select id="q-show"><option value="all">Sealed and waiting</option><option value="sealed">Sealed only</option><option value="waiting">Waiting only</option></select>
+      </div>
+      <button id="btn-reload" type="button">Reload</button>
+    </div>
+    <div class="scroll tall">
+      <table id="row-table" hidden>
+        <thead><tr><th class="num">#</th><th>Time</th><th>Verb</th><th>What</th><th>Actor</th><th>Details</th><th>Status</th></tr></thead>
+        <tbody id="row-body"></tbody>
+      </table>
+    </div>
+    <p id="row-empty" class="empty">Reading the log…</p>
+  </section>
+
+  <p class="note">Rowkeep is an independent open-source project. It is not made or endorsed by Anthropic.</p>
+</div>
+
+<script>
+/* Rowkeep viewer logic for the activity stream. No DOM here, so it runs in Node tests too.
+   The format is specified in docs/ACTIVITY-STREAM.md.
+
+   Every document this page shows was written by someone else and may be malformed. Each
+   kind is checked where it is read (sealedRow, waitingRow, readIndex, briefDoc): a
+   document that does not have the form the page reads is left out on its own and counted,
+   so that one bad document cannot blank a panel. */
+(function (g) {
+  "use strict";
+  var A = (g.PAS = {});
+
+  function isObj(v) { return v !== null && typeof v === "object" && !Array.isArray(v); }
+  function isText(v) { return typeof v === "string"; }
+  function isCount(v) { return typeof v === "number" && Number.isSafeInteger(v) && v >= 0; }
+  function optText(v) { return v === undefined || v === null || isText(v); }
+  /* A value as text, whatever it is. Never String(object): a stored object may carry a
+     member named toString that is not a function. */
+  function text(v) {
+    if (isText(v)) return v;
+    if (typeof v === "number" || typeof v === "boolean") return String(v);
+    if (v === null || v === undefined) return "";
+    try { return JSON.stringify(v); } catch (e) { return ""; }
+  }
+  /* A calendar date written YYYY-MM-DD that exists: not the 31st of February. */
+  function isDate(v) {
+    if (!isText(v) || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    var t = Date.parse(v + "T00:00:00Z");
+    return !isNaN(t) && new Date(t).toISOString().slice(0, 10) === v;
+  }
+  /* An object whose every value is a whole number: a tally's counts by status, by day. */
+  function countMap(v) {
+    return isObj(v) && Object.keys(v).every(function (k) { return typeof v[k] === "number" && Number.isSafeInteger(v[k]); });
+  }
+  /* A tally's list of values: [{v: text or true/false, n: count, s: {field: total}}]. */
+  function valueList(v) {
+    return Array.isArray(v) && v.every(function (x) {
+      return isObj(x) && (isText(x.v) || typeof x.v === "boolean") && isCount(x.n) && (x.s === undefined || countMap(x.s));
+    });
+  }
+
+  /* The bytes a fingerprint is taken over: sorted keys, no spaces, exactly what Python's
+     json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(",", ":")) writes. */
+  function canonical(v) {
+    if (v === null) return "null";
+    if (typeof v === "boolean") return v ? "true" : "false";
+    if (typeof v === "number") {
+      if (!Number.isSafeInteger(v)) throw new Error("not a whole number: " + v);
+      return String(v);
+    }
+    if (typeof v === "string") return JSON.stringify(v);
+    if (Array.isArray(v)) return "[" + v.map(canonical).join(",") + "]";
+    if (typeof v === "object") {
+      return "{" + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ":" + canonical(v[k]); }).join(",") + "}";
+    }
+    throw new Error("cannot fingerprint a " + typeof v);
+  }
+
+  /* The row as it was fingerprinted: without the fingerprint itself and the copied-up p_ fields. */
+  function core(row) {
+    var out = {};
+    Object.keys(row).forEach(function (k) {
+      if (k !== "fingerprint" && k.indexOf("p_") !== 0) out[k] = row[k];
+    });
+    return out;
+  }
+
+  async function sha256Hex(text) {
+    var bytes = new TextEncoder().encode(text);
+    var digest = await g.crypto.subtle.digest("SHA-256", bytes);
+    return Array.prototype.map.call(new Uint8Array(digest), function (b) { return (b < 16 ? "0" : "") + b.toString(16); }).join("");
+  }
+
+  async function fingerprintOf(row) {
+    return sha256Hex(canonical(core(row)));
+  }
+
+  /* The tip of the chain, ix/head, if it has the form of one: {id, n, fingerprint}. */
+  function validHead(d) {
+    if (!isObj(d) || !isCount(d.id) || !isCount(d.n) || !isText(d.fingerprint)) return null;
+    if (d.id > 0 && !/^[0-9a-f]{64}$/.test(d.fingerprint)) return null;
+    /* A log holds every row from 1, so its tip counts as many rows as its newest row's number. */
+    if (d.n !== d.id) return null;
+    return d;
+  }
+  /* What makes one tip the same as another: its row, its count and its fingerprint. A
+     verdict is about the tip it was computed against, and about no other. */
+  function tipSig(d) {
+    var h = validHead(d);
+    return h ? h.id + "|" + h.n + "|" + h.fingerprint : "";
+  }
+
+  /* Check a run of sealed rows, oldest first, against each other and against the tip.
+     Resolves {state, ok, from, to, checked, problems: [text], why}. `state` is one of:
+       "verified"    every row given was recomputed, they chain, and the last is the tip;
+       "empty"       the tip is at row 0 and no rows were given: nothing has been sealed;
+       "broken"      a row was changed, is missing, or is not the row the tip records;
+       "unverified"  no verdict could be reached, and `why` says why not: there is no valid
+                     tip, or the rows given do not reach it.
+     Only "verified" is a clean result, and it speaks for rows `from` to `to` and no others. */
+  async function verify(rows, head) {
+    var problems = [], previous = null, expect = null, failed = "";
+    rows = Array.isArray(rows) ? rows : [];
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      if (expect !== null && row.id !== expect) problems.push("Row " + expect + " is missing.");
+      expect = row.id + 1;
+      if (previous !== null && row.previous !== previous) problems.push("Row " + row.id + " does not point at the row before it.");
+      if (row.id === 1 && row.previous !== "") problems.push("Row 1 should have nothing before it.");
+      var fp;
+      /* A browser that cannot compute a fingerprint has checked nothing: that is "not
+         verified", and never "this row has been changed". */
+      try { fp = await fingerprintOf(row); } catch (e) { failed = (e && e.message) || String(e); break; }
+      if (fp !== row.fingerprint) problems.push("Row " + row.id + " has been changed since it was sealed.");
+      previous = row.fingerprint;
+    }
+    var last = rows.length ? rows[rows.length - 1] : null;
+    var tip = validHead(head), why = "";
+    if (!tip) why = rows.length ? "rows are stored, but the tip the index keeps (ix/head) is missing or not in the form of one" : "the tip the index keeps (ix/head) is missing or not in the form of one";
+    else if (tip.id === 0 && !last) why = "";
+    else if (!last) why = "the tip says row " + tip.id + " is the newest, and no rows came back to check";
+    else if (last.id !== tip.id) why = "the newest row read (" + last.id + ") is not the tip the index records (" + tip.id + ")";
+    else if (last.fingerprint !== tip.fingerprint) problems.push("Row " + last.id + " is not the row the tip records: the fingerprints differ.");
+    if (failed) { problems = []; why = "this browser could not compute a fingerprint (" + failed + "), so no row was checked"; }
+    var state = problems.length ? "broken" : why ? "unverified" : last ? "verified" : "empty";
+    return {
+      state: state,
+      ok: state === "verified",
+      from: rows.length ? rows[0].id : 0,
+      to: last ? last.id : 0,
+      checked: rows.length,
+      problems: problems,
+      why: why
+    };
+  }
+
+  /* A one-line reading of a payload: the `what`/note first, then the other fields. */
+  function detail(payload) {
+    if (!isObj(payload)) return "";
+    var names = ["what", "note", "decision", "claim"], lead = "", from = "";
+    for (var i = 0; i < names.length && !lead; i++) {
+      if (isText(payload[names[i]]) && payload[names[i]]) { lead = payload[names[i]]; from = names[i]; }
+    }
+    var rest = Object.keys(payload).sort().filter(function (k) { return k !== from; }).map(function (k) {
+      return k + ": " + (payload[k] === null ? "null" : text(payload[k]));
+    });
+    return [lead].concat(rest).filter(Boolean).join(" · ");
+  }
+
+  function isoMs(ts) { var t = isText(ts) ? Date.parse(ts) : NaN; return isNaN(t) ? 0 : t; }
+
+  /* A sealed row is shown only if it has the fields of one, each of the right kind. */
+  function sealedRow(d) {
+    if (!isObj(d) || !isCount(d.id) || d.id < 1) return null;
+    if (!isText(d.ts) || !isText(d.verb) || !isText(d.entity) || !isText(d.fingerprint) || !isText(d.previous)) return null;
+    if (!optText(d.subject) || !optText(d.status) || !optText(d.actor) || !optText(d.source)) return null;
+    if (d.payload !== undefined && !isObj(d.payload)) return null;
+    return d;
+  }
+
+  /* An inbox document is usable when it has the fields a row needs, each of the right kind. */
+  function waitingRow(id, d) {
+    if (!isObj(d) || !isText(d.verb) || !isText(d.entity)) return null;
+    if (!optText(d.ts) || !optText(d.subject) || !optText(d.status) || !optText(d.actor) || !optText(d.source)) return null;
+    if (d.payload !== undefined && d.payload !== null && !isObj(d.payload)) return null;
+    return {
+      doc: id, id: null, ts: d.ts || "", verb: d.verb, entity: d.entity,
+      subject: d.subject || "", status: d.status || "",
+      payload: d.payload || {}, source: d.source || "", actor: d.actor || "",
+      waiting: true
+    };
+  }
+
+  /* Sealed and waiting rows together, newest first, filtered.
+     f = {verb, actor, text, show: "all" | "sealed" | "waiting"} */
+  function view(sealed, waiting, f) {
+    f = f || {};
+    var text = (f.text || "").toLowerCase();
+    var rows = [];
+    if (f.show !== "waiting") rows = rows.concat(sealed);
+    if (f.show !== "sealed") rows = rows.concat(waiting);
+    rows = rows.filter(function (r) {
+      if (f.verb && r.verb !== f.verb) return false;
+      if (f.actor && r.actor !== f.actor) return false;
+      if (text && (r.entity + " " + (r.subject || "")).toLowerCase().indexOf(text) < 0) return false;
+      return true;
+    });
+    rows.sort(function (x, y) {
+      /* Waiting rows have no number yet; they are newer than anything sealed. */
+      if (!!x.waiting !== !!y.waiting) return x.waiting ? -1 : 1;
+      if (x.waiting) return isoMs(y.ts) - isoMs(x.ts);
+      return y.id - x.id;
+    });
+    return rows;
+  }
+
+  /* A verb's tally, if it has the form of one. */
+  function tallyDoc(d) {
+    if (!isObj(d) || !isText(d.verb) || !isCount(d.n)) return null;
+    if (d.actor !== undefined && !valueList(d.actor)) return null;
+    if (["status", "source", "day", "sum"].some(function (k) { return d[k] !== undefined && !countMap(d[k]); })) return null;
+    if (d.field !== undefined && !(isObj(d.field) && Object.keys(d.field).every(function (k) { return valueList(d.field[k]); }))) return null;
+    if (!optText(d.last_ts)) return null;
+    return d;
+  }
+
+  /* An entity's state, if it has the form of one. Its current details (f_ fields) are text,
+     whole numbers, true or false, as the script keeps them. */
+  function entityDoc(d) {
+    if (!isObj(d) || !isText(d.entity) || !isCount(d.n)) return null;
+    if (!optText(d.type) || !optText(d.subject) || !optText(d.status) || !optText(d.last_verb) || !optText(d.last_ts)) return null;
+    if (d.last_id !== undefined && !isCount(d.last_id)) return null;
+    if (d.names !== undefined && !(Array.isArray(d.names) && d.names.every(isText))) return null;
+    var fine = Object.keys(d).every(function (k) {
+      if (k.indexOf("f_") !== 0) return true;
+      var v = d[k];
+      return v === null || isText(v) || typeof v === "boolean" || (typeof v === "number" && Number.isSafeInteger(v));
+    });
+    return fine ? d : null;
+  }
+
+  /* Split the index collection into its three kinds of document. `bad` counts the
+     documents left out because they do not have the form of their kind. */
+  function readIndex(docs) {
+    var out = { head: null, verbs: [], entities: [], bad: 0 };
+    (docs || []).forEach(function (doc) {
+      var d = doc && doc.data, k = isObj(d) && isText(d.k) ? d.k : doc && isText(doc.id) ? doc.id : "";
+      var kept = null;
+      if (k === "head") { kept = validHead(d); if (kept) out.head = kept; }
+      else if (k.indexOf("v.") === 0) { kept = tallyDoc(d); if (kept) out.verbs.push(kept); }
+      else if (k.indexOf("e.") === 0) { kept = entityDoc(d); if (kept) out.entities.push(kept); }
+      else return;
+      if (!kept) out.bad++;
+    });
+    out.verbs.sort(function (x, y) { return y.n - x.n || x.verb.localeCompare(y.verb); });
+    out.entities.sort(function (x, y) { return (y.last_id || 0) - (x.last_id || 0); });
+    return out;
+  }
+
+  /* The current details an entity state carries (its f_ fields) as [label, text] pairs,
+     the ones people look for first at the front. Money in cents is shown with its currency. */
+  function recordFields(e) {
+    var lead = ["stage", "owner", "account", "role", "amount_cents", "close_date", "next_step", "next_due"];
+    var keys = Object.keys(e || {}).filter(function (k) { return k.indexOf("f_") === 0 && k !== "f_currency" && k !== "f_merged_into"; })
+      .map(function (k) { return k.slice(2); });
+    keys.sort(function (x, y) {
+      var a = lead.indexOf(x), b = lead.indexOf(y);
+      return (a < 0 ? 99 : a) - (b < 0 ? 99 : b) || (x < y ? -1 : x > y ? 1 : 0);
+    });
+    return keys.map(function (k) {
+      return amount(k, e["f_" + k], e.f_currency) || [k.replace(/_/g, " "), text(e["f_" + k])];
+    });
+  }
+
+  /* A field that holds money as [label, text], or null if it does not. Money is a whole
+     number under a name ending in _cents: the label is the name without that ending, and
+     the text is the amount with two decimals, after its currency code where one is given.
+     ("amount_cents", 4231000, "USD") is ["amount", "USD 42,310.00"]. */
+  function amount(name, v, currency) {
+    if (!isText(name) || name.slice(-6) !== "_cents" || typeof v !== "number") return null;
+    var money = (v / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return [name.slice(0, -6).replace(/_/g, " ") || "amount", (isText(currency) && currency ? currency + " " : "") + money];
+  }
+
+  /* The currency a verb's summed amounts are in, read from its tally of the `currency`
+     field: the code, where every row of the verb carries the same one; null where the rows
+     carry more than one, so that a total of them is a sum of different currencies; and ""
+     where the tally does not say (the verb counts no currency, or not every row has one). */
+  function tallyCurrency(t) {
+    var list = isObj(t) && isObj(t.field) ? t.field.currency : null;
+    if (!Array.isArray(list) || !list.length) return "";
+    if (list.length > 1) return null;
+    return isText(list[0].v) && list[0].v !== "(other)" && list[0].n === t.n ? list[0].v : "";
+  }
+
+  /* Whether an entity's state is a record. Sealing writes the same fields for every entity
+     (a purchase has `names` and a `type` too), so nothing in a state says "record" outright.
+     Three things do: it carries a current detail (an f_ field); or its type is one the
+     skill keeps for records (a company, a person, a deal); or its newest row used a verb
+     that only makes or changes a record. The last two are what find a record that has no
+     details yet. A purchase, a note or a document is none of the three. */
+  var RECORD_TYPES = ["client", "vendor", "partner", "person", "deal"];
+  var RECORD_VERBS = ["account_updated", "contact_updated", "deal_updated", "deal_closed", "record_updated"];
+  function isRecord(e) {
+    if (!isObj(e)) return false;
+    return Object.keys(e).some(function (k) { return k.indexOf("f_") === 0; })
+      || RECORD_TYPES.indexOf(e.type) >= 0 || RECORD_VERBS.indexOf(e.last_verb) >= 0;
+  }
+
+  /* Entities that are records and have not been merged away, with or without details. */
+  function records(entities, type) {
+    return entities.filter(function (e) {
+      if (e.f_merged_into) return false;
+      if (type && e.type !== type) return false;
+      return isRecord(e);
+    }).sort(function (x, y) {
+      return text(x.type).localeCompare(text(y.type)) || text(x.subject || x.entity).localeCompare(text(y.subject || y.entity));
+    });
+  }
+
+  /* Everything with a next step: records and running sequence enrollments. `today` is
+     "YYYY-MM-DD" in the viewer's own time zone. `late` is days past due (0 today, negative
+     for later, null with no date). Dated ones first, oldest due first; then the undated.
+     A due date that is not a real date is shown as its own case (`badDate`), never as a
+     date. `stepNo`, `sequence` and `lastId` say where the record stands, so that a
+     prepared item can be matched to exactly that. */
+  function due(entities, today) {
+    var out = entities.filter(function (e) {
+      if (e.f_merged_into) return false;
+      if (e.type === "enrollment" && e.f_state !== "active") return false;
+      return isText(e.f_next_due) || isText(e.f_next_step);
+    }).map(function (e) {
+      var given = isText(e.f_next_due) ? e.f_next_due : "", d = isDate(given) ? given : "";
+      var late = d && isDate(today) ? Math.round((Date.parse(today + "T00:00:00Z") - Date.parse(d + "T00:00:00Z")) / 86400000) : null;
+      return { entity: e.entity, label: e.subject || e.entity, type: e.type || "", step: isText(e.f_next_step) ? e.f_next_step : "",
+               due: d, badDate: !!given && !d, owner: isText(e.f_owner) ? e.f_owner : "", late: late,
+               stepNo: isCount(e.f_step) ? e.f_step + 1 : null, sequence: isText(e.f_sequence) ? e.f_sequence : "",
+               lastId: isCount(e.last_id) ? e.last_id : null };
+    });
+    out.sort(function (x, y) {
+      if (!!x.due !== !!y.due) return x.due ? -1 : 1;
+      return (x.due < y.due ? -1 : x.due > y.due ? 1 : 0) || x.label.localeCompare(y.label);
+    });
+    return out;
+  }
+
+  /* How many of a due list are due now (today or late), counted over the whole list and
+     not over whatever part of it is drawn. */
+  function dueCounts(list) {
+    var now = 0, undated = 0;
+    list.forEach(function (x) { if (x.late === null) undated++; else if (x.late >= 0) now++; });
+    return { now: now, later: list.length - now - undated, undated: undated };
+  }
+
+  /* A daily brief, if it has the form of one: a real date, the row it was made at (`tip`)
+     and a list of items. One that lacks any of the three is not shown at all, because its
+     items could not be matched to what is due now. Items that are not objects naming an
+     entity are left out. */
+  function briefDoc(d) {
+    if (!isObj(d) || !isDate(d.date) || !isCount(d.tip) || !Array.isArray(d.items)) return null;
+    return {
+      date: d.date,
+      tip: d.tip,
+      items: d.items.filter(function (it) { return isObj(it) && isText(it.entity); })
+    };
+  }
+
+  /* The prepared item for something due, from the newest daily brief, but only while it is
+     about exactly what is still due. An item must name the next step it was written for,
+     and that must be the record's next step now. For a sequence step it must also name the
+     step number and the sequence_defined row it was worked out from (`definition_id`), and
+     both must still hold: the enrollment stands at that step and has no row newer than the
+     brief's `tip`, and the sequence's newest row is that definition (or a row of another
+     kind that the brief had already seen, at or before its `tip`). Anything else is a draft for a step that
+     is no longer the one due, and is dropped. */
+  function prepared(brief, x, entities) {
+    var items = brief && Array.isArray(brief.items) ? brief.items : [];
+    var tip = brief && isCount(brief.tip) ? brief.tip : null;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (!isObj(it) || it.entity !== x.entity) continue;
+      if (!isText(it.next_step) || it.next_step !== x.step) continue;
+      if (tip !== null && x.lastId !== null && x.lastId > tip) continue;
+      if (x.type === "enrollment") {
+        if (!isCount(it.step) || it.step !== x.stepNo || !isCount(it.definition_id)) continue;
+        var seq = null;
+        (entities || []).forEach(function (e) { if (e.entity === "sequence:" + x.sequence) seq = e; });
+        if (!seq || !isCount(seq.last_id)) continue;
+        /* The sequence's newest row is the definition the item names; or it is some other
+           row (a note, an alias) that the brief had already seen when it chose that one. */
+        var same = seq.last_id === it.definition_id;
+        var seen = seq.last_verb !== "sequence_defined" && tip !== null && seq.last_id > it.definition_id && seq.last_id <= tip;
+        if (!same && !seen) continue;
+      }
+      return it;
+    }
+    return null;
+  }
+
+  A.due = due;
+  A.dueCounts = dueCounts;
+  A.prepared = prepared;
+  A.briefDoc = briefDoc;
+  A.tipSig = tipSig;
+  A.recordFields = recordFields;
+  A.amount = amount;
+  A.tallyCurrency = tallyCurrency;
+  A.records = records;
+  A.isRecord = isRecord;
+  A.RECORD_VERBS = RECORD_VERBS;
+  A.canonical = canonical;
+  A.core = core;
+  A.fingerprintOf = fingerprintOf;
+  A.validHead = validHead;
+  A.verify = verify;
+  A.detail = detail;
+  A.text = text;
+  A.isDate = isDate;
+  A.sealedRow = sealedRow;
+  A.waitingRow = waitingRow;
+  A.view = view;
+  A.readIndex = readIndex;
+  A.isoMs = isoMs;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+/* Rowkeep page: a read-only view of the activity stream. All data values are set with textContent. */
+(function () {
+  "use strict";
+  var A = window.PAS;
+  var WINDOW = 400;  /* newest sealed rows held in the page */
+  var READ = 1000;   /* the most documents one read of a collection returns */
+  var TRIES = 3;     /* reads of the stream before saying the tip was not reached */
+  var DRAWN = { due: 200, records: 300, rows: 200, pending: 100 };
+  var S = { db: null, user: null, me: null, ready: false, headExists: false,
+            ix: { head: null, verbs: [], entities: [] }, sealed: [], waiting: [],
+            chain: null, brief: null, checkedTip: null, filterSig: "", typeSig: null, queued: false, loading: false, again: false,
+            readError: "", briefError: "", stale: false, note: "",
+            bad: { head: 0, verbs: 0, entities: 0, inbox: 0, stream: 0, brief: 0, panels: 0 },
+            cut: { verbs: false, entities: false, inbox: false } };
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function int(n) { return Math.round(n || 0).toLocaleString("en-US"); }
+  function two(n) { return n < 10 ? "0" + n : "" + n; }
+  function when(ts) {
+    var ms = A.isoMs(ts);
+    if (!ms) return "not recorded";
+    var d = new Date(ms);
+    return d.getFullYear() + "-" + two(d.getMonth() + 1) + "-" + two(d.getDate()) + " " + two(d.getHours()) + ":" + two(d.getMinutes()) + ":" + two(d.getSeconds());
+  }
+  function say(text, kind) {
+    var s = $("status");
+    s.textContent = text;
+    s.dataset.kind = kind || "";
+  }
+  function explain(e) {
+    var code = e && e.code, msg = (e && e.message) || String(e);
+    if (code === "resource_exhausted") return "Too many calls at once. Wait a few seconds and reload.";
+    if (code === "revoked" || code === "not_granted") return "This view no longer has access to the log.";
+    if (code === "unavailable") return "The log can't be reached right now. Try again.";
+    return msg;
+  }
+  function pause(ms) { return new Promise(function (done) { setTimeout(done, ms); }); }
+  /* A summed field and its total: money as an amount ("amount USD 5,700.00"), anything
+     else as the whole number it is ("minutes 90"). `mid` goes between the two. */
+  function summed(f, n, currency, mid) {
+    var m = A.amount(f, n, currency);
+    return m ? m[0] + mid + m[1] : f + mid + int(n);
+  }
+  /* "Elm Example Expo 2 (amount USD 5,700.00)": a value, its row count, and its share of
+     each sum. `currency` is the one the verb's rows are all in, if there is one. In the
+     tally of the currency field itself (`own`), each value is the currency of its share. */
+  function pairs(list, currency, own) {
+    return (list || []).map(function (x) {
+      var code = own ? (typeof x.v === "string" && x.v !== "(other)" ? x.v : "") : currency;
+      var sums = Object.keys(x.s || {}).sort().map(function (f) { return summed(f, x.s[f], code, " "); }).join(", ");
+      return A.text(x.v) + " " + int(x.n) + (sums ? " (" + sums + ")" : "");
+    }).join(", ");
+  }
+  function counts(map) {
+    return Object.keys(map || {}).sort(function (x, y) { return map[y] - map[x]; }).map(function (k) { return k + " " + int(map[k]); }).join(", ");
+  }
+
+  function schedule() {
+    if (S.queued) return;
+    S.queued = true;
+    (window.requestAnimationFrame || setTimeout)(function () { S.queued = false; render(); }, 16);
+  }
+
+  /* One panel that cannot be drawn must not take the others with it. */
+  function render() {
+    $("btn-reload").disabled = !S.ready || S.loading;
+    var failed = 0;
+    [renderGauges, renderTallies, renderFilters, renderRows, renderPending, renderRecords, renderDue].forEach(function (panel) {
+      try { panel(); } catch (e) { failed++; }
+    });
+    S.bad.panels = failed;
+    renderStatus();
+  }
+
+  /* What the page can say it did, and nothing more. A good result names the rows that were
+     recomputed; anything else says "not verified" and why. */
+  function renderStatus() {
+    var bad = S.bad.head + S.bad.verbs + S.bad.entities + S.bad.inbox + S.bad.stream + S.bad.brief;
+    var notes = [];
+    if (bad) notes.push(int(bad) + (bad === 1 ? " document" : " documents") + " could not be shown: " + (bad === 1 ? "it does" : "they do") + " not have the form this page reads. Ask your assistant to check the log.");
+    if (S.bad.panels) notes.push(int(S.bad.panels) + (S.bad.panels === 1 ? " panel" : " panels") + " could not be drawn.");
+    if (S.briefError) notes.push("The daily brief could not be read, so no prepared drafts or notes are shown: " + S.briefError);
+    $("bad-note").textContent = notes.join(" ");
+    $("bad-note").hidden = !notes.length;
+    if (!S.ready) return;
+    var c = S.chain, lead = S.note ? S.note + " " : "";
+    if (S.readError) say(S.readError, "bad");
+    else if (!c) say("Reading the log…");
+    else if (c.state === "verified") say(lead + "Verified rows " + int(c.from) + " to " + int(c.to) + " against the tip." + (c.from > 1 ? " Earlier rows are not checked on this page." : ""), "good");
+    else if (c.state === "empty") say(lead + "Nothing sealed yet.");
+    else if (c.state === "broken") say("Not intact: " + c.problems[0], "bad");
+    else say("Not verified: " + c.why + ".", "bad");
+  }
+
+  function renderDue() {
+    var now = new Date(), today = now.getFullYear() + "-" + two(now.getMonth() + 1) + "-" + two(now.getDate());
+    var list = A.due(S.ix.entities, today), body = $("due-body"), drafts = 0;
+    var n = A.dueCounts(list);
+    body.textContent = "";
+    $("due-panel").hidden = !list.length;
+    list.slice(0, DRAWN.due).forEach(function (x) {
+      var tr = el("tr"), when = el("td");
+      if (x.badDate) when.textContent = "date not valid";
+      else if (x.late === null) when.textContent = "no date";
+      else if (x.late > 0) when.appendChild(el("span", "tier bad", x.late === 1 ? "1 day late" : int(x.late) + " days late"));
+      else if (x.late === 0) when.appendChild(el("span", "tier pending", "today"));
+      else { when.className = "mono"; when.textContent = x.due; }
+      when.title = x.due;
+      tr.appendChild(when);
+      var who = el("td", "clip", x.label);
+      who.title = x.entity;
+      tr.appendChild(who);
+      tr.appendChild(el("td", "wrap", x.step));
+      tr.appendChild(el("td", "clip", x.owner));
+      var cell = el("td", "wrap"), it = A.prepared(S.brief, x, S.ix.entities);
+      if (it && typeof it.draft_body === "string" && it.draft_body) {
+        var d = el("details");
+        d.appendChild(el("summary", "", typeof it.draft_subject === "string" && it.draft_subject ? it.draft_subject : "Draft"));
+        d.appendChild(el("div", "draft", it.draft_body));
+        cell.appendChild(d);
+        drafts++;
+      } else if (it && typeof it.notes === "string") cell.textContent = it.notes;
+      tr.appendChild(cell);
+      body.appendChild(tr);
+    });
+    var text = int(n.now) + " due now, " + int(n.later) + " later, " + int(n.undated) + " undated.";
+    if (list.length > DRAWN.due) text += " The first " + int(DRAWN.due) + " of " + int(list.length) + " are listed.";
+    if (S.cut.entities) text += " Only the first " + int(READ) + " records were read, so there may be more.";
+    if (S.brief && S.brief.date) text += " Prepared by the brief of " + S.brief.date + (drafts ? ": " + int(drafts) + (drafts === 1 ? " draft" : " drafts") + " shown, none sent." : ".");
+    $("due-note").textContent = text;
+  }
+
+  function renderRecords() {
+    var all = A.records(S.ix.entities, ""), types = {};
+    all.forEach(function (e) { if (e.type) types[e.type] = 1; });
+    var names = Object.keys(types).sort(), sig = names.join("|");
+    if (sig !== S.typeSig) { S.typeSig = sig; fill($("q-type"), "Every type", names); }
+    var list = A.records(S.ix.entities, $("q-type").value);
+    var body = $("rec-body");
+    body.textContent = "";
+    $("rec-panel").hidden = !all.length;
+    list.slice(0, DRAWN.records).forEach(function (e) {
+      var tr = el("tr");
+      var name = el("td", "clip", e.subject || e.entity);
+      name.title = e.entity + ((e.names || []).length > 1 ? " · also known as " + e.names.slice(1).join(", ") : "");
+      tr.appendChild(name);
+      tr.appendChild(el("td", "clip", e.type || ""));
+      tr.appendChild(el("td", "wrap", A.recordFields(e).map(function (p) { return p[0] + ": " + p[1]; }).join(" · ") || "no details yet"));
+      tr.appendChild(el("td", "mono", when(e.last_ts)));
+      tr.appendChild(el("td", "num", int(e.n)));
+      body.appendChild(tr);
+    });
+    $("rec-note").textContent = int(list.length) + (list.length === 1 ? " record" : " records")
+      + (list.length > DRAWN.records ? ", first " + int(DRAWN.records) + " shown" : "") + ". Each line is the newest value of every detail logged against it."
+      + (S.cut.entities ? " Only the first " + int(READ) + " records were read, so there may be more." : "");
+  }
+
+  function renderGauges() {
+    var head = S.ix.head, sealedCount = head ? head.n : 0;
+    $("g-rows").textContent = S.ready ? int(sealedCount + S.waiting.length) : "—";
+    $("g-rows-sub").textContent = int(sealedCount) + " sealed, " + int(S.waiting.length) + " waiting" + (S.cut.inbox ? " (first " + int(READ) + " read)" : "");
+
+    var c = S.chain, value = $("g-chain"), sub = $("g-chain-sub");
+    value.dataset.kind = "";
+    if (!S.ready) { value.textContent = "—"; sub.textContent = "checked in your browser"; }
+    else if (!c) { value.textContent = "Checking"; sub.textContent = "recomputing fingerprints"; }
+    else if (c.state === "verified") {
+      value.textContent = "Verified";
+      value.dataset.kind = "good";
+      sub.textContent = "rows " + int(c.from) + " to " + int(c.to) + " recomputed here and matched to the tip" + (c.from > 1 ? "; earlier rows not checked here" : "");
+    } else if (c.state === "empty") { value.textContent = "Empty"; sub.textContent = "nothing sealed yet"; }
+    else if (c.state === "broken") {
+      value.textContent = "Broken";
+      value.dataset.kind = "bad";
+      sub.textContent = c.problems[0];
+    } else {
+      value.textContent = "Not verified";
+      value.dataset.kind = "bad";
+      sub.textContent = c.why;
+    }
+
+    var pending = S.ix.entities.filter(function (e) { return e.status === "pending"; }).length;
+    $("g-pending").textContent = S.ready ? int(pending) : "—";
+    $("g-pending-sub").textContent = (pending === 1 ? "thing awaiting follow-up" : "things awaiting follow-up") + (S.cut.entities ? ", among the first " + int(READ) + " records" : "");
+
+    var newest = S.waiting.concat(S.sealed).reduce(function (m, r) { return Math.max(m, A.isoMs(r.ts)); }, 0);
+    $("g-last").textContent = newest ? when(new Date(newest).toISOString()).slice(5, 16) : "—";
+    $("g-last-sub").textContent = newest ? when(new Date(newest).toISOString()).slice(0, 4) + ", your local time" : "no activity yet";
+  }
+
+  function renderTallies() {
+    var body = $("tally-body"), verbs = S.ix.verbs;
+    body.textContent = "";
+    $("tally-table").hidden = !verbs.length;
+    $("tally-empty").hidden = !!verbs.length || !S.ready;
+    verbs.forEach(function (v) {
+      var tr = el("tr");
+      tr.appendChild(el("td", "clip", v.verb));
+      tr.appendChild(el("td", "num", int(v.n)));
+      tr.appendChild(el("td", "wrap", pairs(v.actor)));
+      tr.appendChild(el("td", "wrap", counts(v.source)));
+      /* Money is shown as money. A total over rows in more than one currency is not one
+         figure in any of them, and says so; the currency tally beside it has each one's own. */
+      var parts = [], currency = A.tallyCurrency(v), mixed = currency === null;
+      Object.keys(v.sum || {}).sort().forEach(function (f) {
+        parts.push(summed(f, v.sum[f], currency, " total ") + (mixed && A.amount(f, v.sum[f]) ? " (mixed currencies)" : ""));
+      });
+      Object.keys(v.field || {}).sort().forEach(function (f) { parts.push(f + ": " + pairs(v.field[f], currency, f === "currency")); });
+      var st = counts(v.status);
+      if (st && st.indexOf("ok ") !== 0 || Object.keys(v.status || {}).length > 1) parts.push("status: " + st);
+      tr.appendChild(el("td", "wrap", parts.join(" · ")));
+      tr.appendChild(el("td", "mono", when(v.last_ts)));
+      body.appendChild(tr);
+    });
+    var total = S.ix.head ? S.ix.head.n : 0;
+    $("tally-note").textContent = verbs.length
+      ? int(total) + " sealed rows across " + verbs.length + (verbs.length === 1 ? " verb" : " verbs") + ". These are the tallies as the index stores them; this page does not recount them."
+        + (S.cut.verbs ? " Only the first " + int(READ) + " tallies were read, so there may be more." : "")
+      : "";
+  }
+
+  function fill(sel, first, values) {
+    var keep = sel.value;
+    sel.textContent = "";
+    var o = el("option", "", first);
+    o.value = "";
+    sel.appendChild(o);
+    values.forEach(function (v) {
+      var opt = el("option", "", v);
+      opt.value = v;
+      sel.appendChild(opt);
+    });
+    sel.value = keep;
+    if (sel.value !== keep) sel.value = "";
+  }
+  function renderFilters() {
+    var verbs = {}, actors = {};
+    S.sealed.concat(S.waiting).forEach(function (r) { verbs[r.verb] = 1; if (r.actor) actors[r.actor] = 1; });
+    var v = Object.keys(verbs).sort(), a = Object.keys(actors).sort(), sig = v.join("|") + "/" + a.join("|");
+    if (sig === S.filterSig) return;
+    S.filterSig = sig;
+    fill($("q-verb"), "Any verb", v);
+    fill($("q-actor"), "Any actor", a);
+  }
+
+  function renderRows() {
+    var rows = A.view(S.sealed, S.waiting, {
+      verb: $("q-verb").value, actor: $("q-actor").value, text: $("q-text").value.trim(), show: $("q-show").value
+    });
+    var body = $("row-body"), table = $("row-table"), empty = $("row-empty");
+    body.textContent = "";
+    if (!rows.length) {
+      table.hidden = true;
+      empty.hidden = false;
+      empty.textContent = !S.ready ? "Reading the log…"
+        : (S.sealed.length || S.waiting.length) ? "No rows match these filters."
+        : "Nothing logged yet. Rows appear here once Claude records them with the rowkeep skill.";
+      $("row-summary").textContent = "";
+      return;
+    }
+    rows.slice(0, DRAWN.rows).forEach(function (r) {
+      var tr = el("tr");
+      tr.appendChild(el("td", "num", r.waiting ? "" : int(r.id)));
+      tr.appendChild(el("td", "mono", when(r.ts)));
+      tr.appendChild(el("td", "clip", r.verb));
+      var ent = el("td", "clip", r.subject || r.entity);
+      ent.title = r.entity;
+      tr.appendChild(ent);
+      tr.appendChild(el("td", "clip", r.actor || ""));
+      tr.appendChild(el("td", "wrap", A.detail(r.payload)));
+      var st = el("td");
+      st.appendChild(el("span", "tier " + (r.waiting ? "pending" : r.status === "fail" ? "bad" : r.status === "pending" ? "pending" : "packed"),
+        r.waiting ? "waiting" : (r.status || "ok")));
+      tr.appendChild(st);
+      body.appendChild(tr);
+    });
+    table.hidden = false;
+    empty.hidden = true;
+    var head = S.ix.head, sealedTotal = head ? head.n : 0;
+    var text = int(rows.length) + (rows.length === 1 ? " row" : " rows") + " shown";
+    if (rows.length > DRAWN.rows) text = "Newest " + int(DRAWN.rows) + " of " + int(rows.length) + " matching rows";
+    if (sealedTotal > S.sealed.length) text += ". This page holds the newest " + int(S.sealed.length) + " of " + int(sealedTotal) + " sealed rows; ask your assistant for older ones";
+    if (S.cut.inbox) text += ". Only the first " + int(READ) + " waiting rows were read, so there may be more";
+    if (S.stale) text += ". The sealed rows listed are from an earlier read: the newest read failed";
+    $("row-summary").textContent = text + ".";
+  }
+
+  function renderPending() {
+    var list = S.ix.entities.filter(function (e) { return e.status === "pending"; });
+    var body = $("pend-body");
+    body.textContent = "";
+    $("pend-panel").hidden = !list.length;
+    list.slice(0, DRAWN.pending).forEach(function (e) {
+      var tr = el("tr");
+      var ent = el("td", "clip", e.subject || e.entity);
+      ent.title = e.entity;
+      tr.appendChild(ent);
+      var id = el("td", "clip", e.entity);
+      id.title = e.entity;
+      tr.appendChild(id);
+      tr.appendChild(el("td", "clip", e.last_verb || ""));
+      tr.appendChild(el("td", "mono", when(e.last_ts)));
+      tr.appendChild(el("td", "num", int(e.n)));
+      body.appendChild(tr);
+    });
+    $("pend-note").textContent = "Things whose most recent row left them pending: " + int(list.length) + "."
+      + (list.length > DRAWN.pending ? " The first " + int(DRAWN.pending) + " are listed." : "")
+      + (S.cut.entities ? " Only the first " + int(READ) + " records were read, so there may be more." : "");
+  }
+
+  /* ---------- loading ---------- */
+
+  /* Read the newest sealed rows and check them against the tip. Resolves true if the rows
+     were read. If the newest row read is not the tip, a seal may have landed in between,
+     so it reads again: at most TRIES times, and then says the tip was not reached. */
+  async function loadSealed(force) {
+    if (S.loading) { S.again = true; return false; }
+    /* A verdict stands only for the tip it was computed against: its row, its count and
+       its fingerprint, not its row number alone. */
+    if (!force && S.chain && S.chain.state !== "unverified" && A.tipSig(S.ix.head) === S.checkedTip) return true;
+    S.loading = true;
+    S.again = false;
+    var read = false;
+    for (var attempt = 1; attempt <= TRIES; attempt++) {
+      var rows = [], bad = 0, found = 0;
+      try {
+        var qs = await S.db.collection("stream").orderBy("id", "desc").limit(WINDOW).get();
+        found = qs.docs.length;
+        qs.docs.forEach(function (d) { var r = A.sealedRow(d.data()); if (r) rows.push(r); else bad++; });
+      } catch (e) {
+        /* Nothing was checked by this read, and any rows on screen are from an earlier one. */
+        read = false;
+        S.readError = explain(e);
+        S.stale = S.sealed.length > 0;
+        S.chain = { state: "unverified", problems: [], from: 0, to: 0, why: "the rows could not be read (" + S.readError + ")" };
+        S.checkedTip = null;
+        break;
+      }
+      read = true;
+      S.readError = "";
+      S.stale = false;
+      rows.sort(function (x, y) { return x.id - y.id; });
+      S.sealed = rows;
+      S.bad.stream = bad;
+      S.chain = null;
+      schedule();
+      var used = S.ix.head, usedSig = A.tipSig(used), hadTip = S.headExists;
+      var chain = await A.verify(rows, used);
+      /* Computing fingerprints takes time, and the tip may have changed meanwhile. The
+         verdict is shown only if the tip it was computed against is still the tip. */
+      var moved = A.tipSig(S.ix.head) !== usedSig || S.headExists !== hadTip;
+      if (moved) chain = { state: "unverified", problems: [], from: 0, to: 0, why: "the tip changed while the rows were being checked" };
+      /* Documents came back and none is a row: that is not an empty log. */
+      else if (found && !rows.length) chain = { state: "unverified", problems: [], from: 0, to: 0, why: "the stream holds " + int(found) + (found === 1 ? " document, and it is not" : " documents, and none is") + " in the form of a row" };
+      /* "Empty" is said only of a read that came back with nothing, on a log with no tip. */
+      else if (chain.state === "unverified" && !S.headExists && !found) chain.state = "empty";
+      S.chain = chain;
+      S.checkedTip = moved ? null : usedSig;
+      if (attempt === TRIES || (!moved && (chain.state !== "unverified" || !S.ix.head))) break;
+      schedule();
+      await pause(250);
+    }
+    S.loading = false;
+    schedule();
+    if (S.again) return loadSealed(false);
+    return read;
+  }
+
+  function subscribe() {
+    function dead(e) { S.readError = explain(e); if (!S.ready) say(S.readError, "bad"); schedule(); }
+    /* The index is read in three parts, so that a log with more index documents than one
+       read returns still shows its tip and its tallies. Keys are "head", "v.<verb>",
+       "e.<hash>" and "i.<hash>"; "/" is the character after ".", so each range is one prefix. */
+    function part(prefix) { return S.db.collection("ix").where("k", ">=", prefix + ".").where("k", "<", prefix + "/").limit(READ); }
+    function docs(qs) { return qs.docs.map(function (d) { return { id: d.id, data: d.data() }; }); }
+    S.db.doc("ix/head").onSnapshot(function (snap) {
+      takeHead(snap);
+      schedule();
+      if (S.ready) loadSealed(false);
+    }, dead);
+    part("v").onSnapshot(function (qs) {
+      var ix = A.readIndex(docs(qs));
+      S.ix.verbs = ix.verbs; S.bad.verbs = ix.bad; S.cut.verbs = qs.docs.length >= READ;
+      schedule();
+    }, dead);
+    part("e").onSnapshot(function (qs) {
+      var ix = A.readIndex(docs(qs));
+      S.ix.entities = ix.entities; S.bad.entities = ix.bad; S.cut.entities = qs.docs.length >= READ;
+      schedule();
+    }, dead);
+    if (S.me && S.me.id) {
+      S.db.collection("data/users/" + S.me.id + "/as/inbox").limit(READ).onSnapshot(function (qs) {
+        var rows = [], bad = 0;
+        qs.docs.forEach(function (d) { var r = A.waitingRow(d.id, d.data()); if (r) rows.push(r); else bad++; });
+        S.waiting = rows; S.bad.inbox = bad; S.cut.inbox = qs.docs.length >= READ;
+        schedule();
+      }, dead);
+    }
+    /* The newest daily brief, if a brief session has run: its drafts sit beside what is due. */
+    S.db.collection("brief").orderBy("date", "desc").limit(1).onSnapshot(function (qs) {
+      var raw = qs.docs.length ? qs.docs[0].data() : null;
+      S.brief = raw ? A.briefDoc(raw) : null;
+      S.bad.brief = raw && !S.brief ? 1 : 0;
+      S.briefError = "";
+      schedule();
+    }, function (e) {
+      /* A brief that could not be read is said, not passed over: nothing prepared is shown. */
+      S.brief = null;
+      S.briefError = explain(e);
+      schedule();
+    });
+  }
+
+  /* The tip as a snapshot gives it: kept only if it has the form of one. */
+  function takeHead(snap) {
+    S.headExists = !!snap.exists;
+    S.ix.head = snap.exists ? A.validHead(snap.data()) : null;
+    S.bad.head = snap.exists && !S.ix.head ? 1 : 0;
+  }
+
+  async function boot() {
+    var slow = setTimeout(function () {
+      if (!S.ready) say("The log hasn't answered yet. Rows will appear here when it does.");
+    }, 10000);
+    function stop(text) { clearTimeout(slow); say(text, "bad"); $("row-empty").textContent = text; }
+
+    if (!window.claude || !window.claude.use) return stop("The log is only available when this page is opened where it was published.");
+    var got = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    S.db = got[0];
+    S.user = got[1];
+    if (!S.db) return stop("The log isn't available in this view. Sign in and open the page again.");
+    /* Only the viewer's id is used, to find their own waiting rows. It becomes part of a
+       path, so it is taken only if it looks like an id. */
+    if (S.user) {
+      try {
+        var id = typeof S.user.id === "function" ? await S.user.id() : ((await S.user.me()) || {}).id;
+        S.me = typeof id === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(id) ? { id: id } : null;
+      } catch (e) { S.me = null; }
+    }
+    subscribe();
+    try {
+      takeHead(await S.db.doc("ix/head").get());
+    } catch (e) {
+      return stop(explain(e));
+    }
+    clearTimeout(slow);
+    S.ready = true;
+    say("Reading the log…");
+    schedule();
+    loadSealed(true);
+  }
+
+  $("btn-reload").addEventListener("click", function () {
+    if (!S.db || S.loading) return;
+    S.note = "";
+    say("Reloading…");
+    loadSealed(true).then(function (read) {
+      /* "Reloaded" is said only of a read that came back; a failed one keeps its error. */
+      S.note = read ? "Reloaded." : "";
+      schedule();
+    });
+  });
+  ["q-verb", "q-actor", "q-show", "q-type"].forEach(function (id) { $(id).addEventListener("change", schedule); });
+  $("q-text").addEventListener("input", schedule);
+
+  render();
+  boot().catch(function (e) { say(explain(e), "bad"); });
+})();
+</script>

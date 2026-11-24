@@ -1,0 +1,13 @@
+{
+  "name": "rowkeep",
+  "displayName": "Rowkeep",
+  "version": "0.7.1",
+  "description": "A small database that lives in an artifact in your own Claude account: an activity log, records (companies, contacts, deals, document history), follow-ups, and a ledger that can be checked. No outside service.",
+  "author": { "name": "Rowkeep authors", "url": "https://github.com/cklose2000/rowkeep" },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/cklose2000/rowkeep",
+  "repository": "https://github.com/cklose2000/rowkeep",
+  "documentationUrl": "https://github.com/cklose2000/rowkeep#readme",
+  "supportUrl": "https://github.com/cklose2000/rowkeep/issues",
+  "privacyPolicyUrl": "https://github.com/cklose2000/rowkeep/blob/main/PRIVACY.md"
+}

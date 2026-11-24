@@ -1,0 +1,21 @@
+{
+  "log": {
+    "db": {
+      "rules": [
+        {"path": "", "read": "view", "write": "admin"},
+        {"path": "data/users", "read": "admin", "write": "admin"},
+        {"path": "data/users/{self}", "read": "interact", "write": "interact"},
+        {"path": "members", "read": "view", "write": "self"},
+        {"path": "members/{self}", "read": "view", "write": "interact"}
+      ]
+    },
+    "user": {}
+  },
+  "vault": {
+    "db": {
+      "rules": [
+        {"path": "", "read": "admin", "write": "admin"}
+      ]
+    }
+  }
+}

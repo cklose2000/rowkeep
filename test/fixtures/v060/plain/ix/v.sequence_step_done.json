@@ -1,0 +1,1 @@
+{"actor":[{"n":1,"v":"human"}],"ck":"b86eabfbf194","day":{"2026-11-22":1},"field":{"channel":[{"n":1,"s":{},"v":"call"}],"seq_step":[{"n":1,"s":{},"v":"trial/2"}]},"k":"v.sequence_step_done","last_id":15,"last_ts":"2026-11-22T19:00:14+00:00","n":1,"source":{"chat":1},"status":{"ok":1},"sum":{},"verb":"sequence_step_done"}

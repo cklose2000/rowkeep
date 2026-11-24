@@ -1,0 +1,127 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Rowkeep Vault</title>
+<style>
+/* One job: say what the vault's tip says it holds and when it was last copied to. */
+:root {
+  --bg: #eef1f6; --surface: #ffffff; --ink: #131c2b; --muted: #566377; --line: #d3dae5;
+  --accent: #2847c9; --good: #1a7a52; --crit: #b3261e;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131b; --surface: #161d28; --ink: #e7ecf4; --muted: #95a2b6; --line: #2a3545;
+    --accent: #8ea6ff; --good: #54c792; --crit: #ff8078; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131b; --surface: #161d28; --ink: #e7ecf4; --muted: #95a2b6; --line: #2a3545;
+  --accent: #8ea6ff; --good: #54c792; --crit: #ff8078; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.wrap {
+  max-width: 860px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 20px;
+}
+h1, h2, p { margin: 0; }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 16px; font-weight: 600; }
+.lede { color: var(--muted); max-width: 64ch; }
+.status { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.status[data-kind="good"] { color: var(--good); }
+.status[data-kind="bad"] { color: var(--crit); }
+.gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 640px) { .gauges { grid-template-columns: minmax(0, 1fr); } }
+.gauge, .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.g-label { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.g-value { font-family: var(--mono); font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.15; overflow-wrap: anywhere; }
+.g-sub, .note { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; font-size: 14px; }
+dt { color: var(--muted); }
+dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Rowkeep vault</h1>
+    <p class="lede">A second copy of every sealed row of a Rowkeep activity stream, kept in its own artifact so the log can be put back if it is lost or damaged. Your assistant brings it up to date; this page only reads.</p>
+    <p id="status" class="status" role="status" aria-live="polite">Opening the vault…</p>
+  </header>
+
+  <section class="gauges" aria-label="What the vault holds">
+    <div class="gauge"><span class="g-label">Rows held</span><span class="g-value" id="g-rows">—</span><span class="g-sub">every one a sealed row</span></div>
+    <div class="gauge"><span class="g-label">Newest row</span><span class="g-value" id="g-tip">—</span><span class="g-sub" id="g-tip-sub">not copied yet</span></div>
+    <div class="gauge"><span class="g-label">Last copied</span><span class="g-value" id="g-when">—</span><span class="g-sub" id="g-when-sub">your local time</span></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-tip">
+    <h2 id="h-tip">The tip</h2>
+    <dl>
+      <dt>Fingerprint of the newest row</dt><dd id="d-fp">—</dd>
+      <dt>The log it copies</dt><dd id="d-src">—</dd>
+    </dl>
+    <p class="note">The log's own tip should show the same fingerprint for the same row. If it does not, a row has been changed in one of the two.</p>
+  </section>
+
+  <p class="note">Rowkeep is an independent open-source project. It is not made or endorsed by Anthropic.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function $(id) { return document.getElementById(id); }
+  function two(n) { return n < 10 ? "0" + n : "" + n; }
+  function say(text, kind) { $("status").textContent = text; $("status").dataset.kind = kind || ""; }
+  var EMPTY = { "g-rows": "—", "g-tip": "—", "g-tip-sub": "not copied yet", "g-when": "—", "g-when-sub": "your local time", "d-fp": "—", "d-src": "—" };
+  /* Every field goes back to its empty state before anything is shown, so that nothing
+     from an earlier tip stays on screen when the tip is gone or is not valid. */
+  function reset() { Object.keys(EMPTY).forEach(function (id) { $(id).textContent = EMPTY[id]; }); }
+  function count(v) { return typeof v === "number" && Number.isSafeInteger(v) && v >= 0; }
+  /* Why a document is not a vault's tip, or "" when it is one: {id, n, fingerprint}, with
+     as many rows as its id, since a vault holds every row from 1. */
+  function wrong(d) {
+    if (d === null || typeof d !== "object" || Array.isArray(d)) return "it is not a document of fields";
+    if (!count(d.n)) return "its row count is not a whole number";
+    if (!count(d.id)) return "its newest row number is not a whole number";
+    if (d.n !== d.id) return "its row count and its newest row number differ";
+    if (typeof d.fingerprint !== "string" || (d.id > 0 && !/^[0-9a-f]{64}$/.test(d.fingerprint))) return "its fingerprint is not one";
+    return "";
+  }
+  function show(d) {
+    reset();
+    if (!d) { say("Nothing has been copied into this vault yet."); return; }
+    var why = wrong(d);
+    if (why) { say("The vault's tip cannot be shown: " + why + ". Ask your assistant to check the vault.", "bad"); return; }
+    $("g-rows").textContent = d.n.toLocaleString("en-US");
+    $("g-tip").textContent = "#" + d.id.toLocaleString("en-US");
+    var made = typeof d.ts === "string" ? Date.parse(d.ts) : NaN, copied = typeof d.copied_at === "string" ? Date.parse(d.copied_at) : NaN;
+    var notes = [];
+    if (!isNaN(made)) { var m = new Date(made); $("g-tip-sub").textContent = "sealed " + m.getFullYear() + "-" + two(m.getMonth() + 1) + "-" + two(m.getDate()); }
+    else { $("g-tip-sub").textContent = "date sealed not recorded"; notes.push("when the newest row was sealed"); }
+    if (!isNaN(copied)) {
+      var c = new Date(copied);
+      $("g-when").textContent = two(c.getMonth() + 1) + "-" + two(c.getDate()) + " " + two(c.getHours()) + ":" + two(c.getMinutes());
+      $("g-when-sub").textContent = c.getFullYear() + ", your local time";
+    } else { $("g-when-sub").textContent = "not recorded"; notes.push("when it was last copied"); }
+    $("d-fp").textContent = d.fingerprint || "—";
+    $("d-src").textContent = typeof d.source === "string" && d.source ? d.source : "—";
+    /* This page reads the tip and nothing else: it says what the vault says it holds, and
+       does not compare the vault with the log. */
+    say("Showing the vault's tip as it is stored: " + d.n.toLocaleString("en-US") + (d.n === 1 ? " row." : " rows.")
+      + (notes.length ? " Not recorded in a form this page reads: " + notes.join(", and ") + "." : ""), notes.length ? "" : "good");
+  }
+  async function boot() {
+    var slow = setTimeout(function () { say("The vault hasn't answered yet."); }, 10000);
+    if (!window.claude || !window.claude.use) { clearTimeout(slow); return say("The vault is only available when this page is opened where it was published.", "bad"); }
+    var db = await window.claude.use("db");
+    clearTimeout(slow);
+    if (!db) return say("The vault isn't available in this view. Sign in and open the page again.", "bad");
+    db.doc("vault/head").onSnapshot(function (snap) { show(snap.exists ? snap.data() : null); },
+      /* A read that failed shows nothing of the tip read before it. */
+      function (e) { reset(); say("The vault could not be read, so nothing is shown: " + ((e && e.message) || "it can't be read from this view") + ".", "bad"); });
+  }
+  boot().catch(function (e) { say((e && e.message) || String(e), "bad"); });
+})();
+</script>
