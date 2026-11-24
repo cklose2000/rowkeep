@@ -16,6 +16,26 @@ tested" before relying on it.
 Rowkeep is an independent project. It is not made, endorsed or supported by Anthropic.
 "Claude" and "Claude Code" are Anthropic's names for its own products.
 
+## Try it
+
+In a claude.ai chat, with nothing else installed:
+
+1. Download [`rowkeep.skill`](https://github.com/cklose2000/rowkeep/releases/latest/download/rowkeep.skill),
+   the latest release.
+2. In claude.ai open Customize, then Skills, choose Add skill, then Upload skill. Code
+   execution must be on.
+3. In a new chat, say **set up Rowkeep**. It says what it will make and waits for your yes.
+
+In Claude Code:
+
+```
+claude plugin marketplace add cklose2000/rowkeep
+claude plugin install rowkeep@rowkeep
+```
+
+Then say **set up Rowkeep**. The details are under [Install](#install), and
+[docs/REVIEW.md](docs/REVIEW.md) is a fifteen-minute walk-through with sample data.
+
 ## What it does
 
 - **Logs what you ask it to.** The assistant records what was done, to what, by whom: a
