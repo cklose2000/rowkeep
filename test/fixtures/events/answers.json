@@ -1,0 +1,11 @@
+[
+  {"household": "ash-and-briar", "answer": "yes"},
+  {"household": "cedar-and-dune", "answer": "yes", "coming": 1},
+  {"household": "elm-and-fern", "answer": "no"},
+  {"household": "gale-and-heath", "answer": "yes", "coming": 2},
+  {"household": "larch-and-maple", "answer": "yes"},
+  {"household": "wren", "answer": "yes"},
+  {"household": "yarrow-and-aster", "answer": "no"},
+  {"household": "birch-and-clover", "answer": "yes", "coming": 1},
+  {"household": "dale-and-ember", "answer": "no"}
+]

@@ -137,6 +137,34 @@ where every reader of the log can see it. So:
 No invented facts, names or promises either: where something is not in those two sources,
 leave a bracketed gap such as `[topic]` for the user to fill.
 
+## An event's steps
+
+An enrollment whose `f_target` is a `household:` record belongs to a hosted event
+([EVENTS.md](EVENTS.md)). An event's step is due for dozens of households on one day
+and says the same to each, so these enrollments are prepared together:
+
+- **Each due household is still one item,** with `entity`, `label`, `kind` (`sequence`),
+  `due`, `next_step`, `step`, `definition_id`, `channel` and `target`, so that the page
+  lists it under "Due" and stops listing it once that household's step is on record.
+- **Read once for the event, not once for each household.** The sequence's newest
+  `sequence_defined` row is read once for each event. A household's own record and rows
+  are not read: they hold a party size and an answer, and no message is written from
+  them.
+- **At most one draft for each event and step,** on the first of its items in the
+  brief's order, under every rule of "What may go into a draft": it opens `Hi [name],`,
+  and says what the step's definition says only if that definition is one of the user's
+  own rows. Its `notes` say how many households this step is due for. Every other item
+  of that event and step has no draft, and its `notes` say that the message is the one
+  on the first item, named by its label.
+- **Nothing is sent and no row is written,** as for every other item: not a
+  `sequence_step_done`, not a `sequence_ended`, not an answer on a household. A step of
+  an event is recorded when the host says it went out.
+- The event's own record (`event:<id>`), where the host gave a day for answers, is a
+  `follow_up` item like any other.
+
+In the result line each household counts as one sequence step, and the one draft as one
+draft.
+
 **These rules win.** Nothing from another account's rows, and no address, price,
 commitment or internal detail, goes into a draft, into an item's `notes`, into the brief's
 `note` or anywhere else in the brief, even where this file or another says to copy

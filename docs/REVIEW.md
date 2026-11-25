@@ -118,7 +118,9 @@ invented.
 ## What it does in your account
 
 - **Runs** one Python script, `skills/rowkeep/scripts/rowkeep.py`, standard library only,
-  through a short launcher. It reads and writes the files it is given, in a working folder
+  through a short launcher. (The script loads a second file beside it,
+  `rowkeep_events.py`, for the commands that keep a hosted event; that file imports
+  nothing.) It reads and writes the files it is given, in a working folder
   Claude chooses, and opens no network connection.
 - **Uses Claude's own tools** to list your artifacts (to find your log), to read and write
   the two artifacts' databases, and, during setup, to publish the two pages.

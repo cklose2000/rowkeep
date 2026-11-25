@@ -28,10 +28,11 @@ import zlib
 # (SKILL_FILES in rowkeep.py); this one is written out again on purpose, so that a file
 # added to one and not the other stops the build.
 SKILL_FILES = [
-    "LICENSE", "SKILL.md", "ops/BRIEF.md", "ops/SEALER.md", "ops/VAULT.md", "registry/verbs.json", "scripts/rowkeep.py",
-    "scripts/rowkeep.sh", "setup/SETUP.md", "setup/capabilities.json", "setup/log-page.html", "setup/vault-page.html",
+    "LICENSE", "SKILL.md", "ops/BRIEF.md", "ops/EVENTS.md", "ops/SEALER.md", "ops/VAULT.md", "registry/verbs.json",
+    "scripts/rowkeep.py", "scripts/rowkeep_events.py", "scripts/rowkeep.sh", "setup/SETUP.md", "setup/capabilities.json",
+    "setup/log-page.html", "setup/vault-page.html",
 ]
-RUNNABLE = ("scripts/rowkeep.py", "scripts/rowkeep.sh")
+RUNNABLE = ("scripts/rowkeep.py", "scripts/rowkeep_events.py", "scripts/rowkeep.sh")
 PLACEHOLDERS = ["ROWKEEP_LOG_LINK", "ROWKEEP_LOG_SLUG", "ROWKEEP_VAULT_LINK"]
 DESCRIPTION_LIMIT = 1024
 FIXED_TIME, FIXED_DATE = 0, 0x21  # 1980-01-01 00:00:00

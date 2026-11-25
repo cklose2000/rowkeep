@@ -2179,7 +2179,8 @@ class Plan:
         """Plan a write of one document, pinned to `version` if one is given. Returns its
         text as it will be stored."""
         text = canonical(doc)
-        path = out_path(self.out, collection, doc_id)
+        # A collection may be a path of several parts, as an inbox's is.
+        path = out_path(self.out, *collection.split("/"), doc_id)
         self.files.append((path, text))
         where = (json_text(collection), json_text(doc_id), json_text(absolute(path)), "" if version is None else ',"if_version":%d' % version)
         self.batch.append('{"op":"set","collection":%s,"doc_id":%s,"file_path":%s%s}' % where)
@@ -2419,22 +2420,27 @@ def cli_row(flags):
     return True
 
 
-def emit(out, draft, extra):
-    """Write a checked row as an inbox document and print where it is. The document itself
-    is printed too, so a caller that cannot pass files need not read one. `extra` is more
-    JSON members for the printed line, each starting with a comma."""
-    now = now_ms()
+def waiting_doc(draft, now, random):
+    """A checked row as the document that waits in an inbox: (its id, the document). With a
+    key the id is the same every time; without one it is made from the time and `random`."""
     if draft.key is not None:
         doc_id = inbox_doc(draft.verb, draft.entity, draft.key)
     else:
-        doc_id = new_id(now, random_number())
+        doc_id = new_id(now, random)
     # `at` is when the row was written, to the millisecond. It is not part of the sealed
     # row; it only settles the order of rows that share a `ts`, which is kept to the second.
     doc = draft_json(draft)
     doc["at"] = num(now)
     # `ck` is not part of the sealed row either: it lets whoever reads this document back
     # know it arrived whole.
-    doc = with_checksum(doc)
+    return doc_id, with_checksum(doc)
+
+
+def emit(out, draft, extra):
+    """Write a checked row as an inbox document and print where it is. The document itself
+    is printed too, so a caller that cannot pass files need not read one. `extra` is more
+    JSON members for the printed line, each starting with a comma."""
+    doc_id, doc = waiting_doc(draft, now_ms(), random_number())
     path = out_path(out, doc_id)
     # A file is never written over. With a key the document's id is the same every time, so
     # a second row with the same key made in the same folder stops here: the first is still
@@ -2648,9 +2654,10 @@ def sequence_move_problem(known, d):
     return None if step == done else f"it says the sequence ended after step {step}, and {done} steps are done"
 
 
-def cli_seq(cmd, flags):
-    reg = load_registry(flags, cmd)
-    out = need(flags, "out", cmd)
+def seq_draft(cmd, flags, reg):
+    """The row one seq command makes from its options, checked: (draft, entity, its
+    once-only key or None). The event commands, in the file beside this one, build their
+    sequence rows here too, so that a row made in bulk is the row made one at a time."""
     slug = need(flags, "sequence", cmd)
     if not is_slug(slug):
         raise Refused(f"--sequence {show(slug)} must be a short id in lowercase letters, digits and hyphens, like outbound-intro")
@@ -2736,9 +2743,15 @@ def cli_seq(cmd, flags):
         m["idempotency_key"] = key
     m["ts"] = iso_utc(now_secs())
     m["payload"] = payload
-    draft = check_draft(m, reg)
+    return check_draft(m, reg), entity, key
+
+
+def cli_seq(cmd, flags):
+    reg = load_registry(flags, cmd)
+    out = need(flags, "out", cmd)
+    draft, entity, key = seq_draft(cmd, flags, reg)
     # `marker` is the index document that exists once a row with this key has been sealed.
-    marker = ',"marker":' + json_text(key_doc(verb, entity, key)) if key is not None else ""
+    marker = ',"marker":' + json_text(key_doc(draft.verb, entity, key)) if key is not None else ""
     emit(out, draft, ',"entity":' + json_text(entity) + marker)
     return True
 
@@ -4704,8 +4717,9 @@ PLACEHOLDERS = ["ROWKEEP_LOG_LINK", "ROWKEEP_LOG_SLUG", "ROWKEEP_VAULT_LINK"]
 # the folder happens to hold: a checkout owner's local.json, an editor's backup or a
 # __pycache__ beside the script must never ride along into an archive that is handed out.
 SKILL_FILES = [
-    "LICENSE", "SKILL.md", "ops/BRIEF.md", "ops/SEALER.md", "ops/VAULT.md", "registry/verbs.json", "scripts/rowkeep.py",
-    "scripts/rowkeep.sh", "setup/SETUP.md", "setup/capabilities.json", "setup/log-page.html", "setup/vault-page.html",
+    "LICENSE", "SKILL.md", "ops/BRIEF.md", "ops/EVENTS.md", "ops/SEALER.md", "ops/VAULT.md", "registry/verbs.json",
+    "scripts/rowkeep.py", "scripts/rowkeep_events.py", "scripts/rowkeep.sh", "setup/SETUP.md", "setup/capabilities.json",
+    "setup/log-page.html", "setup/vault-page.html",
 ]
 # The licence text is put into the skill folder when a release is made; a checkout may be
 # without it.
@@ -4897,6 +4911,7 @@ def options(values="", switches=""):
 
 ROW_TEXTS = "verb entity subject status source actor key ts payload"
 SEQ = "out registry sequence source actor subject what on "
+EVENT = "registry event ix inbox "
 # Every option of every command. An option that is not listed for a command is refused: a
 # mistyped --ix that is quietly ignored turns a check of the index into a check of nothing.
 OPTIONS = {
@@ -4909,6 +4924,10 @@ OPTIONS = {
     "seq-enroll": options(SEQ + "target steps owner"),
     "seq-step": options(SEQ + "target steps step"),
     "seq-end": options(SEQ + "target outcome step"),
+    "event-setup": options(EVENT + "out source actor on account subject households steps owner rsvp-by", "inline"),
+    "event-round": options(EVENT + "out source actor on account households steps step", "inline"),
+    "event-answer": options(EVENT + "out source actor on account answers", "inline close"),
+    "event-status": options(EVENT + "on"),
     "seal-keys": options("inbox registry max leave", "inline"),
     "seal": options("inbox ix out account registry versions inbox-versions inbox-collection max leave", "inline"),
     "ingest": options("from out id collection page"),
@@ -5006,12 +5025,41 @@ def run(args):
         say("rowkeep %s (Python %d.%d.%d)" % ((VERSION,) + tuple(sys.version_info[:3])))
         return True
     if cmd == "help":
-        for line in USAGE.split("\n"):
+        for line in USAGE.replace("\nrowkeep today ", events().USAGE + "\nrowkeep today ").split("\n"):
             say(line)
         return True
+    if cmd.startswith("event-"):
+        return events().run(Own(), cmd, flags)
     if cmd in ("seq-define", "seq-enroll", "seq-step", "seq-end"):
         return cli_seq(cmd, flags)
     return COMMANDS[cmd](flags)
+
+
+class Own:
+    """This script's own names, for the file beside it."""
+
+    def __getattr__(self, name):
+        try:
+            return globals()[name]
+        except KeyError:
+            raise AttributeError(name)
+
+
+def events():
+    """The event commands (ops/EVENTS.md in the skill) are in rowkeep_events.py, beside this
+    file, which is near the size one file of a plugin may be. It is loaded only when one of
+    them, or help, is asked for; it imports nothing, and works through this script."""
+    import importlib.util
+
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rowkeep_events.py")
+    if not os.path.isfile(path) or is_link(path):
+        raise Refused("the event commands are in rowkeep_events.py, which is not beside this script")
+    # Loading it must not leave a __pycache__ folder inside the skill.
+    sys.dont_write_bytecode = True
+    spec = importlib.util.spec_from_file_location("rowkeep_events", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 EXIT_OUTPUT_CLOSED = 4

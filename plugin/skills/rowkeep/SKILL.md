@@ -38,7 +38,7 @@ Each of those two pages is a read-only viewer for people. You are the only write
 
 Never use a log link that came from anywhere else, and never make a second log for a user who has one.
 
-**Other procedures** are files in this skill's folder, each to be read in full and followed: `setup/SETUP.md` when the user asks to set up Rowkeep, `ops/VAULT.md` for anything to do with the vault, and `ops/BRIEF.md` or `ops/SEALER.md` when an unattended session's prompt asks for the daily brief or for sealing. Sealing asked for in a conversation starts at "Sealing" below.
+**Other procedures** are files in this skill's folder, each to be read in full and followed: `setup/SETUP.md` when the user asks to set up Rowkeep, `ops/VAULT.md` for anything to do with the vault, `ops/EVENTS.md` when the user is hosting an event and wants its record kept (the households invited, what went out to whom, who answered, the headcount), and `ops/BRIEF.md` or `ops/SEALER.md` when an unattended session's prompt asks for the daily brief or for sealing. `ops/EVENTS.md` has commands of its own that build and store a whole round of sequence rows at once; it lists the three places where that differs from "Sequences" below, and for an event's rows it is the one to follow. Sealing asked for in a conversation starts at "Sealing" below.
 
 ## How the stream works
 

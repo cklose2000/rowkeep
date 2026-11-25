@@ -57,6 +57,11 @@ Then say **set up Rowkeep**. The details are under [Install](#install), and
 - **Runs sequences.** Steps in order, a few days apart, each done once per target: an outreach
   cadence, a renewal run-up. The assistant drafts a step and records it when you say it
   went out. It never sends one.
+- **Keeps the record of an event you host.** One record for each household invited (a label
+  and a party size, never an address), each round of invitations and reminders recorded
+  for the households it went to, each answer, the headcount, and who came. A round for 40
+  households is one command and one write. Rowkeep sends nothing here either: see
+  [ops/EVENTS.md](plugin/skills/rowkeep/ops/EVENTS.md).
 - **Prepares a morning brief.** A scheduled session lists what is due and drafts the
   messages. It sends nothing and has no mail tool. The brief is stored in the log, where
   everyone the log is shared with can read it. Setup asks separately whether that session
@@ -160,6 +165,9 @@ Checked by tests in this repository, which you can run:
   without a browser: what they say of a sound log, a broken one and one they cannot
   verify, and what they do with malformed documents.
 - `test/unit.py`: the script's own unit tests.
+- `test/events.py`: an event of 40 invented households, against a folder standing in for
+  the database: setup, a round and the same round again, answers, a bounce, the close, and
+  what is due on a given date. `python test/events.py --measure` counts what a round costs.
 
 Run by the author on private artifacts, which you cannot reproduce from here, so treat them
 as claims: fresh assistant sessions following the skill with no other context; the same week
@@ -262,6 +270,7 @@ against the 0.7.1 script; what an assistant does with the words has not been obs
 ```
 sh tools/build-skill.sh        # the two pages, and dist/rowkeep.skill
 python test/unit.py            # the script's unit tests
+python test/events.py          # the event commands, for 40 households
 node test/stream.mjs           # the stream, records, sequences, the vault, and the attacks
 node test/page.mjs             # the log's page, run without a browser
 node tools/drill.mjs mock      # the week-long sequence against the model

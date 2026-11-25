@@ -76,7 +76,7 @@ class CheckSkill(Temp):
     def test_the_archive_the_script_packs_passes(self):
         code, said = self.check(self.archive())
         self.assertEqual(code, 0, said)
-        self.assertIn("12 files and nothing else", said)
+        self.assertIn("14 files and nothing else", said)
         self.assertEqual([rel for rel, _ in self.files][0], "LICENSE", "the licence ships in the skill")
 
     def test_the_real_skill_packs_the_same_bytes_twice_and_passes(self):

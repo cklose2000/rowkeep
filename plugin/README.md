@@ -53,7 +53,9 @@ https://github.com/cklose2000/rowkeep/blob/main/docs/REVIEW.md
   starts the script with it. The script uses only the standard library. It checks rows,
   computes fingerprints and totals, and matches names. It reads and writes only the files
   and folders it is given, in a working folder Claude chooses. It opens no network
-  connection.
+  connection. The commands that keep a hosted event are in a second file beside it,
+  `skills/rowkeep/scripts/rowkeep_events.py`, which the script loads when one is asked for
+  and which imports nothing of its own.
 - **Uses Claude's own tools,** in your account: to list your artifacts, so as to find your
   log; to read and write the databases of your log and your vault; and, during setup only,
   to publish the two pages.

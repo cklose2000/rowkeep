@@ -1719,7 +1719,7 @@ class FilesOnDiskTests(Scratch):
         self.write(os.path.join("skill", "scripts", "__pycache__", "rowkeep.cpython-311.pyc"), "compiled")
         self.write(os.path.join("skill", "ops", "NOTES.md"), "a stray note")
         ok, said = command("pack", "--skill", skill, "--out", self.path("a", "rowkeep.skill"))
-        self.assertTrue(ok and '"files":11' in said, said)
+        self.assertTrue(ok and '"files":13' in said, said)
         with zipfile.ZipFile(self.path("a", "rowkeep.skill")) as z:
             self.assertIsNone(z.testzip())
             names = [i.filename for i in z.infolist()]
@@ -1742,7 +1742,7 @@ class FilesOnDiskTests(Scratch):
             self.assertEqual(z.namelist()[:2], ["rowkeep/LICENSE", "rowkeep/SKILL.md"])
         # An account's own copy: the same list, under a name that cannot be taken for the public file.
         ok, said = command("personalize", "--skill", skill, "--out", self.path("mine"), "--log", "https://claude.ai/artifact/example", "--slug", "example")
-        self.assertTrue(ok and "rowkeep-personal.skill" in said and '"files":12' in said, said)
+        self.assertTrue(ok and "rowkeep-personal.skill" in said and '"files":14' in said, said)
         self.assertEqual(sorted(os.listdir(self.path("mine"))), ["rowkeep", "rowkeep-personal.skill"])
         with zipfile.ZipFile(self.path("mine", "rowkeep-personal.skill")) as z:
             self.assertEqual(z.namelist(), ["rowkeep/" + rel for rel in rowkeep.SKILL_FILES])

@@ -252,6 +252,11 @@ your account's sandbox. It is plain source you can read: nothing is compiled, an
 the standard library only, so it has no dependencies to trust. It makes no network
 connections and starts no other program.
 
+The commands for a hosted event are in a second file beside it, `rowkeep_events.py`, which
+the script loads when one of them is asked for (the script itself is near the size one
+file of a plugin may be). That file has no `import` of its own: it reads, writes and prints
+only by calling the script, so everything said here of the script holds for it.
+
 **What it reads and writes.** It reads the files and folders it is given, and writes only
 under `--out` (and, for `page` and `pack`, the one file named). What that does and does not
 mean:

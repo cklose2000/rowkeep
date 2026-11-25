@@ -437,6 +437,25 @@ Rows written in the same second are sealed in the order they were written: each 
 document carries `at`, the time it was written in milliseconds, which is used only for that
 and is not part of the sealed row.
 
+### A hosted event
+
+An event someone hosts is kept with what is above and nothing new in the store or the
+registry. The event is a sequence, `sequence:<event>`. Each household invited is a record,
+`household:<event>.<id>`, made with `record_updated`: its label, `sequence` (the event's
+id), `party_size`, and later `rsvp`, `coming` and `attended`. Each household is enrolled in
+the sequence, so a round of invitations is one `sequence_step_done` row a household, and an
+answer ends that household's enrollment (`replied`, `bounced`, `no_reply`). Because the
+household's record and its enrollment both carry `f_sequence`, one query of `ix` on that
+field returns the whole event.
+
+The commands `event-setup`, `event-round`, `event-answer` and `event-status` (in
+`scripts/rowkeep_events.py`, loaded by the script) do this for every household at once.
+From that one query and a read of the user's own inbox they work out what is on record,
+applying waiting rows as `seal` would, and write the rows still missing as inbox documents
+with one plan, stored as one batch for each 50 rows. They build sequence rows with the
+code the `seq-*` commands use, and each row is sealed, or dropped as a repeat, as any
+other. `ops/EVENTS.md` in the skill is the procedure.
+
 ## The vault
 
 A log lives in one artifact, and an artifact can be deleted or damaged. The vault is a second
