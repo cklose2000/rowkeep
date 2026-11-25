@@ -80,8 +80,10 @@ procedures", pointing to `ops/EVENTS.md` and saying that file lists where it dif
 1. **"You never send a step. Whatever tools you have, anything going to another person is
    a draft for the user to send."** In a conversation that also holds a skill which sends
    through the host's mail on the host's word, this sentence forbids what that skill
-   does. `EVENTS.md` says only that Rowkeep sends nothing. The sentence needs the
-   author's decision.
+   does. `EVENTS.md` says only that Rowkeep sends nothing. **Decided (owner,
+   2026-11-25):** the sentence now reads "Rowkeep sends nothing; a sending skill may, on
+   the user's word", and a step a sending skill sent is recorded only once it holds the
+   send's message id.
 2. **"The step is recorded when the user says, in this conversation, that it went out."**
    When an assistant sent the step itself, it knows from the send's result. `EVENTS.md`
    keeps the host's word as the reason for the row; whether one instruction ("send these

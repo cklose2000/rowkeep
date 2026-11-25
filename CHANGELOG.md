@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `SKILL.md`, "Sequences": "You never send a step" now reads "Rowkeep sends nothing; a
+  sending skill may, on the user's word." Rowkeep still sends nothing and still records a
+  step only on the user's word; another skill in the conversation that sends through the
+  user's own mail (Partypack, for invitations) is no longer forbidden by Rowkeep's text.
+  A step that skill sent is recorded only once it holds the send's message id. The
+  unattended brief (`ops/BRIEF.md`) is unchanged: it never sends.
+
 ## 0.7.3
 
 - Two wordings in the script changed, and nothing it does. A scan by Anthropic's plugin
